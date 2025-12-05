@@ -10,8 +10,7 @@ import requests
 
 default_wallet_address = "0x7fBCC3c7D3854016754ec186d8865DccD11a3533"
 wallet_address = sys.argv[1] if len(sys.argv) > 1 else default_wallet_address
-print(f"Fetching activity for {wallet_address}...")
-print("-" * 80)
+print(f"\nFetching activity for {wallet_address}...")
 print("\n")
 
 all_data = []
@@ -21,7 +20,7 @@ page_num = 1
 
 # Loop through activity pages
 while True:
-    print(f"Fetching page {page_num} (offset: {offset})...", end=" ", flush=True)
+    print(f"Fetching page {page_num}...", end=" ", flush=True)
     resp = requests.get(
         "https://data-api.polymarket.com/activity",
         params={"user": wallet_address, "limit": limit, "offset": offset},
@@ -33,7 +32,6 @@ while True:
         print("no more data", flush=True)
         break
     all_data.extend(page_data)
-    print(f"got {len(page_data)} entries", flush=True)
     if len(page_data) < limit:
         break
     offset += limit
