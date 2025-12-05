@@ -1,0 +1,3 @@
+# MASTER RULES
+1. When asked to use the polymarket API or endpoints, you must always refer directly to their documentation and only use the exact flags and code they have - do not guess and check. You must always provide reference links at the end of what you got it from and must never hallucinate.
+2. After making or tweaking a current script in a major way, you must always either add it to the README.md or tweak the current one if it was a major change.
