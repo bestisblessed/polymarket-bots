@@ -38,3 +38,68 @@
 2. `https://data-api.polymarket.com` → user-centric + on-chain data (holdings, activity, holders)
 3. `wss://ws-subscriptions-clob.polymarket.com/ws/` → real-time CLOB markets & user orders (CLOB WebSocket)
 4. `wss://ws-live-data.polymarket.com` → real-time general streams (crypto prices, comments, etc.) (RTDS)
+
+---
+
+## Activity vs Positions Endpoints
+
+**`/activity`** — Historical transactions
+- Individual past transactions (trades, buys, sells)
+- Each entry is a single transaction
+- Includes transaction hash, timestamp, and transaction-level details
+    **20 fields:**
+    1. `proxyWallet`
+    2. `timestamp`
+    3. `conditionId`
+    4. `type`
+    5. `size`
+    6. `usdcSize`
+    7. `transactionHash`
+    8. `price`
+    9. `asset`
+    10. `side`
+    11. `outcomeIndex`
+    12. `title`
+    13. `slug`
+    14. `icon`
+    15. `eventSlug`
+    16. `outcome`
+    17. `name`
+    18. `pseudonym`
+    19. `bio`
+    20. `profileImage`
+    21. `profileImageOptimized`
+
+**`/positions`** — Current holdings with P&L
+- Current open positions across markets
+- Each entry is an active position
+- Includes calculated P&L, current value, and position metrics
+    **25 fields:**
+    1. `proxyWallet`
+    2. `asset`
+    3. `conditionId`
+    4. `size`
+    5. `avgPrice`
+    6. `initialValue`
+    7. `currentValue`
+    8. `cashPnl`
+    9. `percentPnl`
+    10. `totalBought`
+    11. `realizedPnl`
+    12. `percentRealizedPnl`
+    13. `curPrice`
+    14. `redeemable`
+    15. `mergeable`
+    16. `title`
+    17. `slug`
+    18. `icon`
+    19. `eventId`
+    20. `eventSlug`
+    21. `outcome`
+    22. `outcomeIndex`
+    23. `oppositeOutcome`
+    24. `oppositeAsset`
+    25. `endDate`
+    26. `negativeRisk`
+
+**Key difference:** Activity shows historical transactions (what happened), while Positions shows current holdings with P&L calculations (what you have now).
