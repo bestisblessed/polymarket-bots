@@ -9,12 +9,12 @@ A collection of Python scripts for interacting with Polymarket's various APIs in
 --- 
 
 2. **`poly_data_get_user_activity.py`** - Fetches and displays user activity (trades, buys, sells) from given wallet address with pagination support
-- Collected data is stored in timestamped JSON files under `./data/user-activity/`
+	- Collected data is stored in timestamped JSON files under `./data/user-activity/`
 
 ---
 
 3. **`poly_data_get_user_positions.py`** - Gets current positions across all markets with P&L calculations for a user wallet
-- Collected data is stored in timestamped JSON files under `./data/user-positions/`
+	- Collected data is stored in timestamped JSON files under `./data/user-positions/`
 
 ---
 
