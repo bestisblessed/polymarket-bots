@@ -16,4 +16,12 @@ A collection of Python scripts for interacting with Polymarket's various APIs in
 
 - **`poly_data_get_event_markets_and_holders.py`** - Lists all markets info from a given event slug with the top holders of each market
 
+- **`poly_data_get_user_positions_v1.py`** - Gets current positions across all markets for a user wallet using raw API requests
+
+- **`poly_data_get_user_positions_v2.py`** - Gets current positions across all markets for a user wallet using with P&L calculations and risk management data
+
+- **`poly_gamma_list_markets.py`** - Lists all markets using with detailed market metadata and filtering options
+
+- **`poly_gamma_list_markets_by_category.py`** - Lists markets filtered by category (Politics, Finance, Crypto, Sports, Tech) using the Gamma API
+
 - **`poly_gamma_list_markets_by_volume.py`** - Lists top 50 markets sorted by trading volume using the Gamma API client
