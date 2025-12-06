@@ -16,8 +16,14 @@ CATEGORY_IDS = {
 TARGET_CATEGORY = "Finance"
 CATEGORY_ID = CATEGORY_IDS.get(TARGET_CATEGORY)
 print(f"Fetching markets in '{TARGET_CATEGORY}' category (id: {CATEGORY_ID})..")
+
+params = {
+    "category_id": CATEGORY_ID,
+    "closed": False,
+    "limit": 1000
+}
 try:
-    markets_response = requests.get(f"https://gamma-api.polymarket.com/markets?category_id={CATEGORY_ID}&closed=false&limit=1000")
+    markets_response = requests.get("https://gamma-api.polymarket.com/markets", params=params)
     markets_data = markets_response.json()
     print(f'Found {len(markets_data)} markets in {TARGET_CATEGORY}')
 
@@ -28,9 +34,9 @@ try:
 
     # Save all to JSON
     os.makedirs("data", exist_ok=True)
-    with open(f"data/markets_{TARGET_CATEGORY.lower()}.json", "w") as f:
+    with open(f"data/category_{TARGET_CATEGORY.lower()}.json", "w") as f:
         json.dump(markets_data, f, indent=2, default=str)
-    print(f"Saved {len(markets_data)} markets to data/markets_{TARGET_CATEGORY.lower()}.json")
+    print(f"Saved {len(markets_data)} markets to data/category_{TARGET_CATEGORY.lower()}.json")
     
 except Exception as e:
     print(f"Error: {e}")
