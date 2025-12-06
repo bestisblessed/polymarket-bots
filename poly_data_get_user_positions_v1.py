@@ -1,5 +1,5 @@
 '''
-Get user current positions from given wallet address
+Get user current positions from given wallet address using raw requests to data-api.polymarket.com/positions
 '''
 
 import sys
