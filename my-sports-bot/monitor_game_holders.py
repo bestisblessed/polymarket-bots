@@ -46,19 +46,25 @@ def extract_game_from_slug(slug: str) -> str:
     return ""
 
 
-def format_bet_line(slug: str, outcome: str) -> str:
+def format_bet_line(slug: str, outcome: str, price: float = None, line: float = None, is_favorite: bool = None) -> str:
     """Extract spread/total line from slug and format nicely."""
     game = extract_game_from_slug(slug)
     
     if "-spread-" in slug:
-        parts = slug.split("-spread-")[-1]  # e.g., "home-5pt5" or "away-3pt5"
-        line = parts.split("-")[-1].replace("pt", ".")  # "5.5"
-        return f"{outcome} +{line}"
+        # Use the line field from game data if available
+        if line is not None and is_favorite is not None:
+            abs_line = abs(line)
+            sign = "-" if is_favorite else "+"
+            return f"{outcome} {sign}{abs_line}"
+        # Fallback to parsing from slug
+        spread_part = slug.split("-spread-")[-1]
+        line_val = spread_part.split("-")[-1].replace("pt", ".")
+        return f"{outcome} {line_val}"
     elif "-total-" in slug:
         parts = slug.split("-total-")[-1]  # e.g., "over-42pt5"
         direction = "Over" if "over" in parts else "Under"
-        line = parts.split("-")[-1].replace("pt", ".")
-        return f"{game} {direction} {line}"
+        line_val = parts.split("-")[-1].replace("pt", ".")
+        return f"{game} - {direction} {line_val}"
     else:
         return f"{outcome} ML"  # moneyline
 
@@ -101,6 +107,8 @@ def build_snapshot(games):
 
         slug = game.get("slug")
         question = game.get("question")
+        # Get the spread line - first outcome is always favorite (negative line)
+        line = game.get("line")
 
         outcomes = _parse_list(game.get("outcomes") or [])
         prices_raw = _parse_list(game.get("outcomePrices") or [])
@@ -136,6 +144,9 @@ def build_snapshot(games):
             else:
                 price = None
 
+            # First outcome (index 0) is the favorite
+            is_favorite = (outcome_idx == 0)
+
             for holder in holders:
                 wallet = holder.get("proxyWallet")
                 shares = float(holder.get("amount", 0))
@@ -155,6 +166,8 @@ def build_snapshot(games):
                         "shares": shares,
                         "price": price,
                         "approxUsd": approx_usd,
+                        "line": line,
+                        "isFavorite": is_favorite,
                     }
                 )
                 total_holders += 1
@@ -204,7 +217,9 @@ def detect_large_wagers(prev_df, curr_df):
     alerts["event_type"] = "holder_delta"
 
     for _, row in alerts.iterrows():
-        bet_line = format_bet_line(row['slug'], row['outcome'])
+        line_val = row.get('line') if pd.notna(row.get('line')) else None
+        is_fav = row.get('isFavorite') if pd.notna(row.get('isFavorite')) else None
+        bet_line = format_bet_line(row['slug'], row['outcome'], row['price'], line_val, is_fav)
         position_val = row['curr_usd']
         potential_profit = row['new_shares'] * (1 - row['price'])
         profile_url = f"https://polymarket.com/profile/{row['wallet']}"
