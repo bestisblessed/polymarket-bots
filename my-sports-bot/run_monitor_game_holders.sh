@@ -1,8 +1,7 @@
 #!/bin/bash
-# Cron (every 3 minutes):
-# */3 * * * * cd /home/trinity/polymarket-bots/my-sports-bot && /usr/bin/python3 monitor_game_holders.py >> data/monitor_game_holders.log 2>&1
+# */3 * * * * /home/trinity/polymarket-bots/my-sports-bot/run_monitor_game_holders.sh >> /home/trinity/polymarket-bots/my-sports-bot/log_whales.log 2>&1
 
+export PATH="$HOME/.pyenv/shims:$HOME/.pyenv/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-PYTHON="$(which python)"
-"$PYTHON" monitor_game_holders.py 2>&1 | tee -a log_whales.log
+python monitor_game_holders.py
