@@ -29,3 +29,15 @@
   - **Status:** active, closed, approved, archived, featured, new
   - **Trading:** acceptingOrders, enableOrderBook, orderMinSize, orderPriceMinTickSize
   - **Price changes:** oneDayPriceChange, oneWeekPriceChange
+
+### 3. `get_nfl_game_bets_single.py`
+
+- Loads the latest `data/nfl_games.json` output and fetches all trades for one game (slug or event id) via the `/trades` endpoint in the [Polymarket Data API](https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets).
+- Saves a JSON report at `data/game-bets/<slug>.json` containing the raw trades plus a quick summary (count + USDC total).
+- Usage: `python3 get_nfl_game_bets_single.py nfl-sea-atl-2025-12-07` (omit the slug to use the first game in the file).
+
+### 4. `get_nfl_game_bets_all.py`
+
+- Iterates through every game stored in `data/nfl_games.json`, hits the same `/trades` Data API endpoint, and emits one report per game under `data/game-bets/`.
+- Prints a concise line per slug so you can monitor progress and total USDC per matchup while it runs.
+- Usage: `python3 get_nfl_game_bets_all.py` (ensure `get_nfl_games.py` was run recently so the input list is current).
