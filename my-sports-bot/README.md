@@ -35,5 +35,5 @@
 - Pulls recent fills (bets) for NFL game markets using the Gamma `/fills` endpoint.
 - Single-game mode: `python get_nfl_game_bets.py --game-id <market_id>` saves fills for one market.
 - Batch mode: `python get_nfl_game_bets.py --all` mirrors the `get_nfl_games.py` filters and saves fills for every active game market.
-- Optional `--notify` flag (batch mode) sends a Pushover alert when it detects newly seen action over $10,000 on any tracked market—either a single fill or a set of new fills from the same actor/outcome that collectively cross the threshold. Intended for cron use on a server.
+- Optional `--notify` flag (batch mode) sends a Pushover alert when it detects newly seen action over $10,000 on any tracked market—either a single fill or a set of new fills from the same actor/outcome that collectively cross the threshold in one run. Cumulative totals per actor/outcome are persisted so the alert will also fire when multiple smaller fills across runs finally push the running total over $10,000. Intended for cron use on a server.
 - References: Polymarket Gamma REST docs for market discovery and fills (`https://docs.polymarket.com/#fills`, `https://docs.polymarket.com/#markets`).
