@@ -35,3 +35,12 @@
 - Monitors **changes in holdings** for NFL game markets over time using `/holders`.
 - Maintains a snapshot in `data/nfl_holders_snapshot.csv` and, on each run, compares the latest snapshot against the previous one.
 - When a wallet’s position value on a given game/outcome **crosses $10,000 USD** (based on current outcome price), logs a large-holder event to `data/large_wagers_events.csv` and prints a `LARGE HOLDER:` line.
+
+### 4. `list_top_game_holders.py`
+
+- Fetches holders for all NFL **moneyline** game markets using the Data API `/holders` endpoint.
+- Aggregates them into a single table and prints the **top 50 holders across all games/sides**, showing:
+  - Approximate USD size of the position
+  - Holder identity (name/pseudonym/wallet)
+  - Wallet address
+  - Team/outcome and game slug.

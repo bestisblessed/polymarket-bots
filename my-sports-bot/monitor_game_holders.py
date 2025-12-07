@@ -11,7 +11,7 @@ GAMES_FILE = "data/nfl_games.json"
 SNAPSHOT_FILE = "data/nfl_holders_snapshot.csv"
 EVENTS_FILE = "data/large_wagers_events.csv"
 
-LIMIT = 200
+LIMIT = 1000
 MIN_BALANCE = 10
 
 # Threshold for what counts as a "large" holder (by total USD value)
