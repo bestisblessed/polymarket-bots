@@ -29,3 +29,9 @@
   - **Status:** active, closed, approved, archived, featured, new
   - **Trading:** acceptingOrders, enableOrderBook, orderMinSize, orderPriceMinTickSize
   - **Price changes:** oneDayPriceChange, oneWeekPriceChange
+
+### 3. `monitor_game_holders.py`
+
+- Monitors **changes in holdings** for NFL game markets over time using `/holders`.
+- Maintains a snapshot in `data/nfl_holders_snapshot.json` and, on each run, compares the latest snapshot against the previous one.
+- When a wallet’s position on a given game/outcome increases enough (`MIN_DELTA_SHARES` / `MIN_DELTA_USD`), logs a **large-wager event** to `data/large_wagers_events.jsonl` and prints a `LARGE WAGER:` line.
