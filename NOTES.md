@@ -103,3 +103,104 @@
     26. `negativeRisk`
 
 **Key difference:** Activity shows historical transactions (what happened), while Positions shows current holdings with P&L calculations (what you have now).
+
+---
+
+# Sports Tags — Gamma API
+
+These are the official sport tag IDs from `https://gamma-api.polymarket.com/sports` (as of late 2025). Use these IDs to filter markets for specific 
+sports.
+
+**NCAA Basketball** — ncaab, 1  
+**English Premier League** — epl, 2  
+**La Liga** — lal, 3  
+**IPL Cricket** — ipl, 5  
+**WNBA** — wnba, 6  
+**Bundesliga** — bun, 7  
+**MLB** — mlb, 8  
+**NCAA Football** — cfb, 9  
+**NFL** — nfl, 10  
+**Ligue 1** — fl1, 11  
+**Serie A** — sea, 12  
+**UEFA Champions League** — ucl, 13  
+**Asian Football** — afc, 15  
+**Oceania Football** — ofc, 16  
+**FIFA** — fif, 17  
+**Eredivisie** — ere, 18  
+**Argentina Primera División** — arg, 19  
+**Coppa Italia** — itc, 20  
+**Liga MX** — mex, 21  
+**Leagues Cup** — lcs, 22  
+**Copa Libertadores** — lib, 23  
+**Copa Sudamericana** — sud, 24  
+**Turkish Süper Lig** — tur, 25  
+**CONMEBOL** — con, 26  
+**CONCACAF** — cof, 27  
+**UEFA** — uef, 28  
+**CAF African Football** — caf, 29  
+**Russian Premier League** — rus, 30  
+**FA Cup** — efa, 31  
+**EFL** — efl, 32  
+**MLS** — mls, 33  
+**NBA** — nba, 34  
+**NHL** — nhl, 35  
+**UEFA Europa League** — uel, 36  
+**Counter-Strike 2** — cs2, 37  
+**Dota 2** — dota2, 38  
+**League of Legends** — lol, 39  
+**Valorant** — valorant, 40  
+**ODI Cricket** — odi, 41  
+**T20 Cricket** — t20, 42  
+**Big Bash League** — abb, 43  
+**Cricket South Africa** — csa, 44  
+**ATP Tennis** — atp, 45  
+**WTA Tennis** — wta, 46  
+**NCAA Women's Basketball** — cwbb, 47  
+**MMA / UFC** — mma, 48  
+**Copa del Rey** — cdr, 49  
+**Mobile Legends** — mlbb, 50  
+**Overwatch** — ow, 51  
+**Honor of Kings** — kog, 52  
+**Call of Duty** — codmw, 53  
+**EA Sports FC / FIFA** — fifa, 54  
+**LoL Wild Rift** — lol-wild-rift, 55  
+**PUBG** — pubg, 56  
+**Rainbow Six Siege** — r6siege, 57  
+**Rocket League** — rl, 58  
+**StarCraft 2** — starcraft-2, 59  
+**StarCraft Brood War** — starcraft-brood-war, 60  
+**UEFA Conference League** — col, 61  
+**Coupe de France** — cde, 62  
+**DFB-Pokal** — dfb, 63  
+**Brasileirão** — bra, 64  
+**J1 League** — jap, 65  
+**J2 League** — ja2, 66  
+**K League** — kor, 67  
+**Saudi Pro League** — spl, 68  
+**Chinese Super League** — chi, 69  
+**A-League** — aus, 70  
+**Indian Super League** — ind, 71  
+**Eliteserien** — nor, 72  
+**Superliga** — den, 73  
+**Liga Portugal** — por, 74  
+**Test Cricket** — test, 75  
+**Sheffield Shield** — she, 76  
+**SA20 Cricket** — sasa, 77  
+**Lanka Premier League** — lpl, 78  
+**Pakistan Tri-Series** — psp, 79  
+**KBO League** — kbo, 80  
+**SHL Hockey** — shl, 81  
+**Czech Extraliga** — cehl, 82  
+**DEL Hockey** — dehl, 83  
+**National League Swiss** — snhl, 84  
+**KHL Hockey** — khl, 85  
+**AHL Hockey** — ahl, 86  
+**International Cricket** — crint, 87  
+**Cricket India** — crind, 88  
+**Cricket England** — creng, 89  
+**Cricket Pakistan** — crpak, 90  
+**Cricket Australia** — craus, 91  
+**Cricket South Africa** — crsou, 92  
+**Cricket UAE** — cruae, 93  
+**Cricket New Zealand** — crnew, 94
+
