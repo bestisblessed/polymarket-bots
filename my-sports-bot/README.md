@@ -29,3 +29,11 @@
   - **Status:** active, closed, approved, archived, featured, new
   - **Trading:** acceptingOrders, enableOrderBook, orderMinSize, orderPriceMinTickSize
   - **Price changes:** oneDayPriceChange, oneWeekPriceChange
+
+### 3. `get_nfl_game_bets.py`
+
+- Pulls recent fills (bets) for NFL game markets using the Gamma `/fills` endpoint.
+- Single-game mode: `python get_nfl_game_bets.py --game-id <market_id>` saves fills for one market.
+- Batch mode: `python get_nfl_game_bets.py --all` mirrors the `get_nfl_games.py` filters and saves fills for every active game market.
+- Optional `--notify` flag (batch mode) sends a Pushover alert when it detects a newly seen fill above $10,000 for any tracked market—intended for cron use on a server.
+- References: Polymarket Gamma REST docs for market discovery and fills (`https://docs.polymarket.com/#fills`, `https://docs.polymarket.com/#markets`).
