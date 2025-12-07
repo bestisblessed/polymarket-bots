@@ -31,7 +31,7 @@ def send_pushover(message: str, url: str = None) -> None:
     if url:
         data["url"] = url
         data["url_title"] = "View Profile"
-    resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=10)
+    resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=20)
     if resp.ok:
         print("Pushover notification sent")
     else:
@@ -117,7 +117,7 @@ def build_snapshot(games):
                 "limit": LIMIT,
                 "minBalance": MIN_BALANCE,
             },
-            timeout=15,
+            timeout=20,
         )
         payload = resp.json()
 
