@@ -10,15 +10,15 @@ load_dotenv()
 
 DATA_API = "https://data-api.polymarket.com/holders"
 GAMES_FILE = "data/nfl_games.json"
-SNAPSHOT_FILE = "data/nfl_holders_snapshot.csv"
-EVENTS_FILE = "data/large_wagers_events.csv"
+SNAPSHOT_FILE = "data/nfl_holders_profit_snapshot.csv"
+EVENTS_FILE = "data/large_profit_events.csv"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 
 LIMIT = 1000
 MIN_BALANCE = 10
 
-# Threshold for what counts as a "large" holder (by total USD value)
-USD_THRESHOLD = 10000.0
+# Threshold for what counts as a "large" potential profit position
+PROFIT_THRESHOLD = 20000.0
 
 
 def send_pushover(message: str, url: str = None) -> None:
@@ -46,21 +46,22 @@ def extract_game_from_slug(slug: str) -> str:
     return ""
 
 
-def format_bet_line(slug: str, outcome: str) -> str:
-    """Extract spread/total line from slug and format nicely."""
+def format_bet_line(slug: str, outcome: str, price: float) -> str:
+    """Extract spread/total line from slug and format with odds."""
+    odds_pct = int(price * 100)
     game = extract_game_from_slug(slug)
     
     if "-spread-" in slug:
-        parts = slug.split("-spread-")[-1]  # e.g., "home-5pt5" or "away-3pt5"
-        line = parts.split("-")[-1].replace("pt", ".")  # "5.5"
-        return f"{outcome} +{line}"
+        parts = slug.split("-spread-")[-1]
+        line = parts.split("-")[-1].replace("pt", ".")
+        return f"{outcome} +{line} ({odds_pct}%)"
     elif "-total-" in slug:
-        parts = slug.split("-total-")[-1]  # e.g., "over-42pt5"
+        parts = slug.split("-total-")[-1]
         direction = "Over" if "over" in parts else "Under"
         line = parts.split("-")[-1].replace("pt", ".")
-        return f"{game} {direction} {line}"
+        return f"{game} {direction} {line} ({odds_pct}%)"
     else:
-        return f"{outcome} ML"  # moneyline
+        return f"{outcome} ML ({odds_pct}%)"  # moneyline
 
 
 def _parse_list(value):
@@ -142,6 +143,8 @@ def build_snapshot(games):
                 if not wallet or not shares:
                     continue
 
+                # Potential profit = payout if win minus current value
+                potential_profit = shares * (1 - price) if price is not None else None
                 approx_usd = shares * price if price is not None else None
 
                 rows.append(
@@ -155,6 +158,7 @@ def build_snapshot(games):
                         "shares": shares,
                         "price": price,
                         "approxUsd": approx_usd,
+                        "potentialProfit": potential_profit,
                     }
                 )
                 total_holders += 1
@@ -168,7 +172,7 @@ def build_snapshot(games):
     return df
 
 
-def detect_large_wagers(prev_df, curr_df):
+def detect_large_profit_positions(prev_df, curr_df):
     if prev_df.empty:
         print("No previous snapshot for comparison; skipping detection")
         return
@@ -184,29 +188,31 @@ def detect_large_wagers(prev_df, curr_df):
 
     prev_shares = merged["shares_prev"].fillna(0.0)
     price = merged["price"].fillna(0.0)
-    prev_usd = prev_shares * price
-    curr_usd = merged["shares"] * price
+    
+    # Calculate potential profit: shares * (1 - price)
+    prev_profit = prev_shares * (1 - price)
+    curr_profit = merged["shares"] * (1 - price)
 
-    mask = (price > 0) & (prev_usd < USD_THRESHOLD) & (curr_usd >= USD_THRESHOLD)
+    mask = (price > 0) & (price < 1) & (prev_profit < PROFIT_THRESHOLD) & (curr_profit >= PROFIT_THRESHOLD)
     alerts = merged[mask].copy()
 
     if alerts.empty:
-        print("No large holder threshold crossings detected on this run")
+        print("No large potential profit threshold crossings detected on this run")
         return
 
     alerts["timestamp"] = timestamp
     alerts["prev_shares"] = prev_shares[mask]
     alerts["new_shares"] = alerts["shares"]
     alerts["delta_shares"] = alerts["new_shares"] - alerts["prev_shares"]
-    alerts["prev_usd"] = prev_usd[mask]
-    alerts["curr_usd"] = curr_usd[mask]
-    alerts["threshold_usd"] = USD_THRESHOLD
-    alerts["event_type"] = "holder_delta"
+    alerts["prev_profit"] = prev_profit[mask]
+    alerts["curr_profit"] = curr_profit[mask]
+    alerts["threshold_profit"] = PROFIT_THRESHOLD
+    alerts["event_type"] = "profit_threshold"
 
     for _, row in alerts.iterrows():
-        bet_line = format_bet_line(row['slug'], row['outcome'])
-        position_val = row['curr_usd']
-        potential_profit = row['new_shares'] * (1 - row['price'])
+        bet_line = format_bet_line(row['slug'], row['outcome'], row['price'])
+        position_val = row['new_shares'] * row['price']
+        potential_profit = row['curr_profit']
         profile_url = f"https://polymarket.com/profile/{row['wallet']}"
         
         msg = (
@@ -230,9 +236,9 @@ def detect_large_wagers(prev_df, curr_df):
         "new_shares",
         "delta_shares",
         "price",
-        "prev_usd",
-        "curr_usd",
-        "threshold_usd",
+        "prev_profit",
+        "curr_profit",
+        "threshold_profit",
         "event_type",
     ]
     events_df = alerts[cols]
@@ -243,12 +249,13 @@ def detect_large_wagers(prev_df, curr_df):
     else:
         events_df.to_csv(EVENTS_FILE, index=False)
 
-    print(f"Recorded {len(events_df)} large-holder events to {EVENTS_FILE}")
+    print(f"Recorded {len(events_df)} large-profit events to {EVENTS_FILE}")
 
 
 def main():
-    print("Note: This script uses Polymarket Data API /holders endpoint")
-    print("Docs: https://docs.polymarket.com/api-reference/core/get-top-holders-for-markets")
+    print("Note: This script monitors POTENTIAL PROFIT (shares * (1 - price))")
+    print(f"Alerts when a holder crosses ${PROFIT_THRESHOLD:,.0f} potential profit")
+    print("This catches sharp underdog bets that would pay big if they win.")
     print()
 
     games = load_games()
@@ -260,7 +267,7 @@ def main():
 
     curr_snapshot_df = build_snapshot(games)
 
-    detect_large_wagers(prev_snapshot_df, curr_snapshot_df)
+    detect_large_profit_positions(prev_snapshot_df, curr_snapshot_df)
 
     save_snapshot(curr_snapshot_df)
     print(f"Saved snapshot to {SNAPSHOT_FILE}")
@@ -268,5 +275,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
