@@ -4,4 +4,5 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-python monitor_game_holders.py 2>&1 | tee -a log_whales.log
+PYTHON="$(which python)"
+"$PYTHON" monitor_game_holders.py 2>&1 | tee -a log_whales.log
