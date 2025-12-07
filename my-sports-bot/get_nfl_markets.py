@@ -34,7 +34,7 @@ while True:
         break
     offset += limit
 
-# Save JSON
+# Save json
 os.makedirs("data", exist_ok=True)
 with open("data/nfl_markets.json", "w") as f:
     json.dump(all_markets, f, indent=2)
