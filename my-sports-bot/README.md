@@ -45,7 +45,7 @@
 
 ### 5. `get_nfl_game_holders.py`
 
-- Targets the [Get top holders for markets](https://docs.polymarket.com/api-reference/core/get-top-holders-for-markets) endpoint to capture the largest positions per outcome for every NFL moneyline market.
-- Builds `data/game-holders/<slug>.json` snapshots that include each holder’s display name / wallet, outcome, share count, and an approximate USDC value using the latest outcome prices in `data/nfl_games.json`.
-- Usage: `python3 get_nfl_game_holders.py` (tune the `LIMIT` / `MIN_BALANCE` constants near the top if you want deeper or shallower lists).
+- Targets the [Get top holders for markets](https://docs.polymarket.com/api-reference/core/get-top-holders-for-markets) endpoint to capture every holder the API will return (the docs cap it at 500 per outcome, which is what the script now requests).
+- Builds `data/game-holders/<slug>.json` snapshots that include display name / wallet, outcome, share count, and an approximate USDC value using the latest outcome prices in `data/nfl_games.json`.
+- Usage: `python3 get_nfl_game_holders.py` (defaults are `limit=500` and `minBalance=0`; edit the constants at the top if you want to trim the lists).
 - To detect new large wagers, schedule this script via cron (e.g., every 5 minutes), persist each run, and diff successive files: if a holder’s `shares` delta * current price exceeds your alert threshold, trigger a notification. This avoids replaying the entire trade history while still surfacing whales as soon as their net exposure changes.

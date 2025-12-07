@@ -6,8 +6,9 @@ import requests
 DATA_API = "https://data-api.polymarket.com/holders"
 GAMES_FILE = "data/nfl_games.json"
 OUTPUT_DIR = "data/game-holders"
-LIMIT = 200
-MIN_BALANCE = 10
+LIMIT = 500  # API max per docs
+MIN_BALANCE = 0  # capture every holder the endpoint returns
+MIN_LIMIT = 50  # fallback size to avoid server timeouts on huge markets
 
 
 def _parse_list(value):
@@ -39,17 +40,23 @@ for game in moneyline_games:
         float(p) for p in _parse_list(game.get("outcomePrices") or [])
         if isinstance(p, (int, float, str))
     ]
-    resp = requests.get(
-        DATA_API,
-        params={
-            "market": condition_id,
-            "limit": LIMIT,
-            "minBalance": MIN_BALANCE,
-        },  # Ref: https://docs.polymarket.com/api-reference/core/get-top-holders-for-markets
-        timeout=15,
-    )
-    resp.raise_for_status()
-    payload = resp.json()
+    req_limit = LIMIT
+    while True:
+        resp = requests.get(
+            DATA_API,
+            params={
+                "market": condition_id,
+                "limit": req_limit,
+                "minBalance": MIN_BALANCE,
+            },  # Ref: https://docs.polymarket.com/api-reference/core/get-top-holders-for-markets
+            timeout=30,
+        )
+        if resp.status_code == 408 and req_limit > MIN_LIMIT:
+            req_limit = max(MIN_LIMIT, req_limit // 2)
+            continue
+        resp.raise_for_status()
+        payload = resp.json()
+        break
     holders_summary = []
     for token in payload:
         holders = token.get("holders") or []
@@ -101,4 +108,7 @@ for game in moneyline_games:
             f,
             indent=2,
         )
-    print(f"{slug}: saved {len(holders_summary)} holder rows -> {out_path}")
+    print(
+        f"{slug}: saved {len(holders_summary)} holder rows "
+        f"(limit {req_limit}, minBalance {MIN_BALANCE}) -> {out_path}"
+    )
