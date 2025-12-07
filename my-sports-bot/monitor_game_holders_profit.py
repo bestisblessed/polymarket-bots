@@ -18,7 +18,7 @@ LIMIT = 1000
 MIN_BALANCE = 10
 
 # Threshold for what counts as a "large" potential profit position
-PROFIT_THRESHOLD = 20000.0
+PROFIT_THRESHOLD = 40000.0
 
 
 def send_pushover(message: str, url: str = None) -> None:

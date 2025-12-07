@@ -18,7 +18,7 @@ LIMIT = 1000
 MIN_BALANCE = 10
 
 # Threshold for what counts as a "large" holder (by total USD value)
-USD_THRESHOLD = 10000.0
+USD_THRESHOLD = 40000.0
 
 
 def send_pushover(message: str, url: str = None) -> None:
