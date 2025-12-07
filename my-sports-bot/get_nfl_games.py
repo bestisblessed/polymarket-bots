@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import csv
 from datetime import datetime
 import pytz
 
@@ -52,6 +53,18 @@ markets_list = list(unique_markets.values())
 os.makedirs("data", exist_ok=True)
 with open("data/nfl_games.json", "w") as f:
     json.dump(markets_list, f, indent=2)
+
+# Save CSV
+csv_path = "data/nfl_games.csv"
+all_keys = set()
+for m in markets_list:
+    all_keys.update(m.keys())
+keys = sorted(list(all_keys))
+with open(csv_path, "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=keys)
+    writer.writeheader()
+    writer.writerows(markets_list)
+print(f"- {csv_path}")
 print(f"\nSuccess! Saved {len(markets_list)} NFL game markets to 'data/nfl_games.json'")
 
 # Print games
