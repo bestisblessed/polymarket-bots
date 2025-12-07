@@ -2,20 +2,20 @@ import json
 import os
 import time
 
+import pandas as pd
 import requests
 
 
 DATA_API = "https://data-api.polymarket.com/holders"
 GAMES_FILE = "data/nfl_games.json"
-SNAPSHOT_FILE = "data/nfl_holders_snapshot.json"
-EVENTS_FILE = "data/large_wagers_events.jsonl"
+SNAPSHOT_FILE = "data/nfl_holders_snapshot.csv"
+EVENTS_FILE = "data/large_wagers_events.csv"
 
 LIMIT = 200
 MIN_BALANCE = 10
 
-# Thresholds for what counts as a "large" wager
-MIN_DELTA_SHARES = 1000.0
-MIN_DELTA_USD = 500.0
+# Threshold for what counts as a "large" holder (by total USD value)
+USD_THRESHOLD = 10000.0
 
 
 def _parse_list(value):
@@ -36,19 +36,17 @@ def load_games():
 
 def load_snapshot():
     if os.path.exists(SNAPSHOT_FILE):
-        with open(SNAPSHOT_FILE) as f:
-            return json.load(f)
-    return {}
+        return pd.read_csv(SNAPSHOT_FILE)
+    return pd.DataFrame([])
 
 
-def save_snapshot(snapshot):
+def save_snapshot(df):
     os.makedirs("data", exist_ok=True)
-    with open(SNAPSHOT_FILE, "w") as f:
-        json.dump(snapshot, f)
+    df.to_csv(SNAPSHOT_FILE, index=False)
 
 
 def build_snapshot(games):
-    snapshot = {}
+    rows = []
     total_holders = 0
 
     for game in games:
@@ -99,69 +97,100 @@ def build_snapshot(games):
                 if not wallet or not shares:
                     continue
 
-                key = f"{condition_id}:{outcome_idx}:{wallet}"
                 approx_usd = shares * price if price is not None else None
 
-                snapshot[key] = {
-                    "conditionId": condition_id,
-                    "slug": slug,
-                    "question": question,
-                    "outcomeIndex": outcome_idx,
-                    "outcome": outcome_name,
-                    "wallet": wallet,
-                    "shares": shares,
-                    "price": price,
-                    "approxUsd": approx_usd,
-                }
+                rows.append(
+                    {
+                        "conditionId": condition_id,
+                        "slug": slug,
+                        "question": question,
+                        "outcomeIndex": outcome_idx,
+                        "outcome": outcome_name,
+                        "wallet": wallet,
+                        "shares": shares,
+                        "price": price,
+                        "approxUsd": approx_usd,
+                    }
+                )
                 total_holders += 1
 
-    print(f"Built holder snapshot with {len(snapshot)} unique (market, outcome, wallet) rows")
+    df = pd.DataFrame(rows)
+    print(
+        f"Built holder snapshot with {len(df)} rows "
+        "(one per (market, outcome, wallet))"
+    )
     print(f"Total holder entries processed: {total_holders}")
-    return snapshot
+    return df
 
 
-def detect_large_wagers(prev_snapshot, curr_snapshot):
+def detect_large_wagers(prev_df, curr_df):
+    if prev_df.empty:
+        print("No previous snapshot for comparison; skipping detection")
+        return
+
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    events = []
 
-    for key, now in curr_snapshot.items():
-        before = prev_snapshot.get(key)
-        prev_shares = before["shares"] if before else 0.0
-        delta_shares = now["shares"] - prev_shares
+    merged = curr_df.merge(
+        prev_df,
+        on=["conditionId", "outcomeIndex", "wallet"],
+        how="left",
+        suffixes=("", "_prev"),
+    )
 
-        price = now.get("price") or 0.0
-        approx_usd = delta_shares * price
+    prev_shares = merged["shares_prev"].fillna(0.0)
+    price = merged["price"].fillna(0.0)
+    prev_usd = prev_shares * price
+    curr_usd = merged["shares"] * price
 
-        if delta_shares >= MIN_DELTA_SHARES or approx_usd >= MIN_DELTA_USD:
-            event = {
-                "timestamp": timestamp,
-                "conditionId": now["conditionId"],
-                "slug": now["slug"],
-                "question": now["question"],
-                "outcomeIndex": now["outcomeIndex"],
-                "outcome": now["outcome"],
-                "wallet": now["wallet"],
-                "prev_shares": prev_shares,
-                "new_shares": now["shares"],
-                "delta_shares": delta_shares,
-                "price": price,
-                "approx_usd": approx_usd,
-                "event_type": "holder_delta",
-            }
-            events.append(event)
-            print(
-                f"LARGE WAGER: {now['slug']} | {now['outcome']} | "
-                f"{now['wallet']} +{delta_shares:.2f} shares (~${approx_usd:.2f})"
-            )
+    mask = (price > 0) & (prev_usd < USD_THRESHOLD) & (curr_usd >= USD_THRESHOLD)
+    alerts = merged[mask].copy()
 
-    if events:
-        os.makedirs("data", exist_ok=True)
-        with open(EVENTS_FILE, "a") as f:
-            for e in events:
-                f.write(json.dumps(e) + "\n")
-        print(f"Recorded {len(events)} large-wager events to {EVENTS_FILE}")
+    if alerts.empty:
+        print("No large holder threshold crossings detected on this run")
+        return
+
+    alerts["timestamp"] = timestamp
+    alerts["prev_shares"] = prev_shares[mask]
+    alerts["new_shares"] = alerts["shares"]
+    alerts["delta_shares"] = alerts["new_shares"] - alerts["prev_shares"]
+    alerts["prev_usd"] = prev_usd[mask]
+    alerts["curr_usd"] = curr_usd[mask]
+    alerts["threshold_usd"] = USD_THRESHOLD
+    alerts["event_type"] = "holder_delta"
+
+    for _, row in alerts.iterrows():
+        print(
+            f"LARGE HOLDER: {row['slug']} | {row['outcome']} | "
+            f"{row['wallet']} crossed ${USD_THRESHOLD:,.0f} "
+            f"(prev ~${row['prev_usd']:,.2f} -> now ~${row['curr_usd']:,.2f})"
+        )
+
+    cols = [
+        "timestamp",
+        "conditionId",
+        "slug",
+        "question",
+        "outcomeIndex",
+        "outcome",
+        "wallet",
+        "prev_shares",
+        "new_shares",
+        "delta_shares",
+        "price",
+        "prev_usd",
+        "curr_usd",
+        "threshold_usd",
+        "event_type",
+    ]
+    events_df = alerts[cols]
+
+    os.makedirs("data", exist_ok=True)
+    if os.path.exists(EVENTS_FILE):
+        events_df.to_csv(EVENTS_FILE, mode="a", header=False, index=False)
     else:
-        print("No large holder deltas detected on this run")
+        events_df.to_csv(EVENTS_FILE, index=False)
+
+    print(f"Recorded {len(events_df)} large-holder events to {EVENTS_FILE}")
 
 
 def main():
@@ -172,18 +201,15 @@ def main():
     games = load_games()
     print(f"Loaded {len(games)} NFL game markets from {GAMES_FILE}")
 
-    prev_snapshot = load_snapshot()
-    if not prev_snapshot:
+    prev_snapshot_df = load_snapshot()
+    if prev_snapshot_df.empty:
         print("No previous snapshot found (first run)")
 
-    curr_snapshot = build_snapshot(games)
+    curr_snapshot_df = build_snapshot(games)
 
-    if prev_snapshot:
-        detect_large_wagers(prev_snapshot, curr_snapshot)
-    else:
-        print("Skipping detection on first run; saving baseline snapshot only")
+    detect_large_wagers(prev_snapshot_df, curr_snapshot_df)
 
-    save_snapshot(curr_snapshot)
+    save_snapshot(curr_snapshot_df)
     print(f"Saved snapshot to {SNAPSHOT_FILE}")
 
 

@@ -33,5 +33,5 @@
 ### 3. `monitor_game_holders.py`
 
 - Monitors **changes in holdings** for NFL game markets over time using `/holders`.
-- Maintains a snapshot in `data/nfl_holders_snapshot.json` and, on each run, compares the latest snapshot against the previous one.
-- When a wallet’s position on a given game/outcome increases enough (`MIN_DELTA_SHARES` / `MIN_DELTA_USD`), logs a **large-wager event** to `data/large_wagers_events.jsonl` and prints a `LARGE WAGER:` line.
+- Maintains a snapshot in `data/nfl_holders_snapshot.csv` and, on each run, compares the latest snapshot against the previous one.
+- When a wallet’s position value on a given game/outcome **crosses $10,000 USD** (based on current outcome price), logs a large-holder event to `data/large_wagers_events.csv` and prints a `LARGE HOLDER:` line.
