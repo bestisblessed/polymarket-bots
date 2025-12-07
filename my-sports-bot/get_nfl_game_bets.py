@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 import pytz
 import requests
@@ -82,13 +82,22 @@ def save_fills_to_file(fills: Iterable[Dict], path: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(list(fills), f, indent=2, default=str)
 
-def load_state() -> Dict[str, str]:
+def load_state() -> Dict[str, Dict[str, List[str]]]:
     if not os.path.exists(STATE_PATH):
         return {}
     with open(STATE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        raw_state = json.load(f)
+    # Backward compatibility: previous format stored last seen ID as a string
+    state: Dict[str, Dict[str, List[str]]] = {}
+    for market_id, entry in raw_state.items():
+        if isinstance(entry, dict) and "seen_ids" in entry:
+            seen_ids = entry.get("seen_ids") or []
+        else:
+            seen_ids = [entry] if isinstance(entry, str) else []
+        state[str(market_id)] = {"seen_ids": [str(fid) for fid in seen_ids]}
+    return state
 
-def save_state(state: Dict[str, str]) -> None:
+def save_state(state: Dict[str, Dict[str, List[str]]]) -> None:
     ensure_data_dir()
     with open(STATE_PATH, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
@@ -100,6 +109,15 @@ def format_et(timestamp: str) -> str:
 
 def fill_identifier(fill: Dict) -> str:
     return str(fill.get("id") or fill.get("_id") or fill.get("transactionHash") or fill)
+
+def fill_actor(fill: Dict) -> str:
+    return str(
+        fill.get("maker")
+        or fill.get("taker")
+        or fill.get("creator")
+        or fill.get("user")
+        or "unknown"
+    )
 
 def usd_size(fill: Dict) -> float:
     price = float(fill.get("price") or 0)
@@ -126,27 +144,54 @@ def send_pushover(message: str) -> None:
     resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=10)
     resp.raise_for_status()
 
-def notify_new_large_fills(market: Dict, fills: List[Dict], state: Dict[str, str]) -> None:
+def notify_new_large_fills(
+    market: Dict, fills: List[Dict], state: Dict[str, Dict[str, List[str]]]
+) -> None:
     market_id = str(market.get("id"))
-    last_seen = state.get(market_id)
-    sorted_fills = sorted(fills, key=lambda f: f.get("timestamp") or f.get("createdAt") or "")
+    existing_ids = set(state.get(market_id, {}).get("seen_ids") or [])
+    sorted_fills = sorted(
+        fills,
+        key=lambda f: (f.get("timestamp") or f.get("createdAt") or "", fill_identifier(f)),
+    )
+
+    actor_totals: Dict[Tuple[str, str], float] = {}
+    actor_counts: Dict[Tuple[str, str], int] = {}
+    new_ids: List[str] = []
+
     for fill in sorted_fills:
         fid = fill_identifier(fill)
-        if last_seen and fid <= last_seen:
+        if fid in existing_ids:
             continue
+        new_ids.append(fid)
+        actor = fill_actor(fill)
+        outcome = str(fill.get("outcome") or fill.get("outcomeId") or "unknown")
         amount_usd = usd_size(fill)
-        if amount_usd >= FILL_THRESHOLD_USD:
-            ts = fill.get("timestamp") or fill.get("createdAt") or ""
+        key = (actor, outcome)
+        actor_totals[key] = actor_totals.get(key, 0.0) + amount_usd
+        actor_counts[key] = actor_counts.get(key, 0) + 1
+
+    for (actor, outcome), total in actor_totals.items():
+        if total >= FILL_THRESHOLD_USD:
+            ts = (
+                sorted_fills[-1].get("timestamp")
+                or sorted_fills[-1].get("createdAt")
+                or ""
+            )
             time_display = format_et(ts) if ts else "unknown time"
-            outcome = fill.get("outcome") or fill.get("outcomeId") or "unknown"
+            fills_count = actor_counts[(actor, outcome)]
             message = (
-                f"New large bet for {market.get('question', 'NFL market')}\n"
+                f"New large bettor activity for {market.get('question', 'NFL market')}\n"
+                f"Actor: {actor}\n"
                 f"Outcome: {outcome}\n"
-                f"Size: ${amount_usd:,.2f}\n"
-                f"When: {time_display}"
+                f"Total size: ${total:,.2f} across {fills_count} fills\n"
+                f"Last fill: {time_display}"
             )
             send_pushover(message)
-        state[market_id] = fid
+
+    if new_ids:
+        updated_ids = list(existing_ids) + new_ids
+        # Keep the most recent IDs to avoid unbounded growth while preventing duplicate alerts
+        state[market_id] = {"seen_ids": updated_ids[-FILL_LIMIT:]}
 
 def collect_for_single_market(market_id: str) -> None:
     fills = fetch_fills_for_market(market_id)
