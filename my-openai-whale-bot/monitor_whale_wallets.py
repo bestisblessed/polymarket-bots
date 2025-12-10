@@ -243,7 +243,9 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
         shares_line = f"{size} shares @ {price} (${usdc})"
         tx_line = f"TXs: {tx}" if tx != "N/A" else f"TX: {tx}"
 
-        alert_message = f"{username} {side} {shares_line}\n{title}\n{tx_line}"
+        profile_link = f"https://polymarket.com/@{username}"
+
+        alert_message = f"{username} {side} {shares_line}\n{title}\n{tx_line}\n{profile_link}"
 
         alert = f"🚨 {username} {side} ORDER: {title} - {size} @ {price} (${usdc} USDC) -> {outcome} | TX: {tx} | Time: {ts}"
 
@@ -322,7 +324,9 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
     market_line = title
     tx_line = f"TXs: {tx_str}"
 
-    alert_message = f"{username} {side} {shares_line}\n{market_line}\n{tx_line}"
+    profile_link = f"https://polymarket.com/@{username}"
+
+    alert_message = f"{username} {side} {shares_line}\n{market_line}\n{tx_line}\n{profile_link}"
 
     alert = (f"🚨 {username} {side} ORDER ({num_fills} fills in this run): {title} - "
              f"{total_size:.0f} total shares @ avg {avg_price:.2f} "
