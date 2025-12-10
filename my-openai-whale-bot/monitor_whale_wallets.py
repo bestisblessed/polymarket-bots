@@ -67,7 +67,8 @@ WHALES = {
     "Iam100x": "0x804600942f9044bf4f4ec7f1815b186184e60a1b",
     "RootAccessed": "0x066d64fa7b2e352b9000a51c6b56f53128cce6e6",
     # "seabass9": "0x7fBCC3c7D3854016754ec186d8865DccD11a3533",
-    "CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb"
+    "CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
+    "AltCreamster": "0x899c7076e1e81f2d6bf5c78c140a943752fded9a",
 }
 API_URL = "https://data-api.polymarket.com/activity"
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
@@ -244,7 +245,7 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
 
         profile_link = f"https://polymarket.com/@{username}"
 
-        alert_message = f"{username} {side} {shares_line}\n{title}\n{profile_link}"
+        alert_message = f"{username} {side} {shares_line}\n{title}\n\n{profile_link}"
 
         alert = f"🚨 {username} {side} ORDER: {title} - {size} @ {price} (${usdc} USDC) -> {outcome} | Time: {ts}"
 
@@ -312,7 +313,7 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
 
     profile_link = f"https://polymarket.com/@{username}"
 
-    alert_message = f"{username} {side} {shares_line}\n{market_line}\n{profile_link}"
+    alert_message = f"{username} {side} {shares_line}\n{market_line}\n\n{profile_link}"
 
     alert = (f"🚨 {username} {side} ORDER ({num_fills} fills in this run): {title} - "
              f"{total_size:.0f} total shares @ avg {avg_price:.2f} "
