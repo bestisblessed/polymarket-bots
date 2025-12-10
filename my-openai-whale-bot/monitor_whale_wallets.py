@@ -239,13 +239,14 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
         # Title: Default (no custom title)
         pushover_title = None  # Will use default Pushover title
 
-        # Message: New format - Whale ACTION shares MARKET TXs (no title in body)
+        # Message: New format - Whale ACTION shares MARKET with profile link (no TX line)
         shares_line = f"{size} shares @ {price} (${usdc})"
-        tx_line = f"TXs: {tx}" if tx != "N/A" else f"TX: {tx}"
 
-        alert_message = f"{username} {side} {shares_line}\n{title}\n{tx_line}"
+        profile_link = f"https://polymarket.com/@{username}"
 
-        alert = f"🚨 {username} {side} ORDER: {title} - {size} @ {price} (${usdc} USDC) -> {outcome} | TX: {tx} | Time: {ts}"
+        alert_message = f"{username} {side} {shares_line}\n{title}\n{profile_link}"
+
+        alert = f"🚨 {username} {side} ORDER: {title} - {size} @ {price} (${usdc} USDC) -> {outcome} | Time: {ts}"
 
         # Save individual event
         alert_data = {
@@ -303,30 +304,19 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
     # Shares line for multiple fills
     shares_line = f"{total_size:.0f} total shares @ avg {avg_price:.2f} (${total_usdc:.0f})"
 
-    # TXs
-    txs = []
-    for t in group:
-        tx_hash = t.get("transactionHash", "")
-        if tx_hash:
-            txs.append(tx_hash[:10] + "...")
-    tx_str = ", ".join(txs[:5])
-    if len(txs) > 5:
-        tx_str += f" +{len(txs)-5} more"
-    elif not txs:
-        tx_str = "N/A"
-
     # Title: Default (no custom title)
     pushover_title = None  # Will use default Pushover title
 
-    # Message: New format - Whale ACTION shares MARKET TXs (no title in body)
+    # Message: New format - Whale ACTION shares MARKET with profile link (no TX line)
     market_line = title
-    tx_line = f"TXs: {tx_str}"
 
-    alert_message = f"{username} {side} {shares_line}\n{market_line}\n{tx_line}"
+    profile_link = f"https://polymarket.com/@{username}"
+
+    alert_message = f"{username} {side} {shares_line}\n{market_line}\n{profile_link}"
 
     alert = (f"🚨 {username} {side} ORDER ({num_fills} fills in this run): {title} - "
              f"{total_size:.0f} total shares @ avg {avg_price:.2f} "
-             f"(${total_usdc:.0f} USDC) -> {outcome} | TXs: {tx_str} | "
+             f"(${total_usdc:.0f} USDC) -> {outcome} | "
              f"Time: {time_range}")
 
     # Send Pushover for grouped alert (only if not a new whale's historical data)
