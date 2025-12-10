@@ -302,7 +302,7 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
     num_fills = len(group)
 
     # Shares line for multiple fills
-    shares_line = f"{total_size:.0f} total shares @ avg {avg_price:.2f} (${total_usdc:.0f})"
+    shares_line = f"{total_size:.0f} shares @ avg {avg_price:.2f} (${total_usdc:.0f})"
 
     # Title: Default (no custom title)
     pushover_title = None  # Will use default Pushover title
