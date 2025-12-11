@@ -74,12 +74,16 @@ def main():
 
     # Load processed TXs for deduplication
     processed_txs = get_processed_txs()
+    is_initialization = len(processed_txs) == 0
 
     # Ensure alerts file exists
     if not os.path.exists(ALERTS_FILE):
         with open(ALERTS_FILE, "w") as f:
             pass  # Create empty file
         print(f"Created new alerts file: {ALERTS_FILE}")
+
+    if is_initialization:
+        print(f"  First run detected - initializing deduplication, notifications will be skipped")
 
     # Fetch recent activity
     print(f"Fetching activity for {USERNAME} ({WALLET_ADDRESS[:10]}...)")
@@ -134,8 +138,12 @@ def main():
             f"{profile_link}"
         )
 
-        # Send notification
-        pushover_success = send_pushover_notification(message)
+        # Send notification (skip during initialization)
+        pushover_success = False
+        if not is_initialization:
+            pushover_success = send_pushover_notification(message)
+        else:
+            print(f"    Initialization: Skipping notification for historical trade, adding to deduplication only")
 
         # Save to JSONL file
         alert_data = {
@@ -161,7 +169,10 @@ def main():
         except Exception as e:
             print(f"Error writing alert to {ALERTS_FILE}: {e}")
 
-    print(f"✓ Processed {len(new_trades)} new trades")
+    if is_initialization:
+        print(f"✓ Initialized with {len(new_trades)} historical trades (notifications skipped)")
+    else:
+        print(f"✓ Processed {len(new_trades)} new trades")
 
 if __name__ == "__main__":
     main()
