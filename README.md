@@ -25,3 +25,5 @@ A collection of Python scripts for interacting with Polymarket's various APIs in
 - **`poly_gamma_list_markets_by_category.py`** - Lists markets filtered by category (Politics, Finance, Crypto, Sports, Tech) using the Gamma API
 
 - **`poly_gamma_list_markets_by_volume.py`** - Lists top 50 markets sorted by trading volume using the Gamma API client
+
+- **`my-creamster-monitor-bot/monitor_creamster_wallet.py`** - Minimal cron-friendly watcher that pings Pushover when AltCreamster's wallet has fresh activity via the Polymarket Data API activity endpoint
