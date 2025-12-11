@@ -68,7 +68,8 @@ WHALES = {
     "RootAccessed": "0x066d64fa7b2e352b9000a51c6b56f53128cce6e6",
     # "seabass9": "0x7fBCC3c7D3854016754ec186d8865DccD11a3533",
     "CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
-    "AltCreamster": "0x899c7076e1e81f2d6bf5c78c140a943752fded9a",
+    "George.Smiley": "0x2110ba2a1e18840109482ff4ddc547baeff45850",
+#    "AltCreamster": "0x899c7076e1e81f2d6bf5c78c140a943752fded9a",
 }
 API_URL = "https://data-api.polymarket.com/activity"
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
