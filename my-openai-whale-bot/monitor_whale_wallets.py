@@ -242,11 +242,11 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
         pushover_title = None  # Will use default Pushover title
 
         # Message: New format - Whale ACTION shares MARKET with profile link (no TX line)
-        shares_line = f"{size} shares @ {price} (${usdc})"
+        shares_line = f"{size} {outcome} shares @ {price} (${usdc})"
 
         profile_link = f"https://polymarket.com/@{username}"
 
-        alert_message = f"{username} {side} {shares_line}\n{title}\n\n{profile_link}"
+        alert_message = f"{username} {side} {shares_line}\n{title}\nSide: {outcome}\n\n{profile_link}"
 
         alert = f"🚨 {username} {side} ORDER: {title} - {size} @ {price} (${usdc} USDC) -> {outcome} | Time: {ts}"
 
@@ -304,7 +304,7 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
     num_fills = len(group)
 
     # Shares line for multiple fills
-    shares_line = f"{total_size:.0f} shares @ avg {avg_price:.2f} (${total_usdc:.0f})"
+    shares_line = f"{total_size:.0f} {outcome} shares @ avg {avg_price:.2f} (${total_usdc:.0f})"
 
     # Title: Default (no custom title)
     pushover_title = None  # Will use default Pushover title
@@ -314,7 +314,7 @@ def format_grouped_alert(group, username, wallet, is_new_whale=False):
 
     profile_link = f"https://polymarket.com/@{username}"
 
-    alert_message = f"{username} {side} {shares_line}\n{market_line}\n\n{profile_link}"
+    alert_message = f"{username} {side} {shares_line}\n{market_line}\nSide: {outcome}\n\n{profile_link}"
 
     alert = (f"🚨 {username} {side} ORDER ({num_fills} fills in this run): {title} - "
              f"{total_size:.0f} total shares @ avg {avg_price:.2f} "
