@@ -27,3 +27,20 @@ A collection of Python scripts for interacting with Polymarket's various APIs in
 - **`poly_gamma_list_markets_by_volume.py`** - Lists top 50 markets sorted by trading volume using the Gamma API client
 
 - **`my-creamster-monitor-bot/monitor_creamster_wallet.py`** - Minimal cron-friendly watcher that pings Pushover when AltCreamster's wallet has fresh activity via the Polymarket Data API activity endpoint
+
+---
+
+## NFL Team Trends (TeamRankings)
+
+- **`teamrankings_scrape_team_trends.py`** - Scrapes TeamRankings team per-game yards stats for a season and writes a CSV:
+  - Passing yards per game (for)
+  - Opponent passing yards per game (against / allowed)
+  - Rushing yards per game (for)
+  - Opponent rushing yards per game (against / allowed)
+
+Run:
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 teamrankings_scrape_team_trends.py 2025
+```
