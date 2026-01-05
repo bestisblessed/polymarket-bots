@@ -7,19 +7,23 @@ A collection of utility scripts and fully functioning 'beginner' bots for Polyma
 Bots published here are not meant to get you rich directly - rather build upon this and focus on improving on the strategies to make them more advanced. These cleaned up and streamlined examples should give you a great starting point even for a beginner to understand. 
 
 <div align="center">
-<table align="center" cellpadding="10" cellspacing="10">
+
+<table>
 <tr>
-<td align="center" width="33%" style="padding: 15px;">
-  <img src="images/1.png" alt="Bot Preview 1" width="100%" style="border-radius: 12px; max-width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto;">
+<td width="280" align="center">
+<img src="images/1.png" alt="Bot Preview 1" width="280" />
 </td>
-<td align="center" width="33%" style="padding: 15px;">
-  <img src="images/2.png" alt="Bot Preview 2" width="100%" style="border-radius: 12px; max-width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto;">
+<td width="40"></td>
+<td width="280" align="center">
+<img src="images/2.png" alt="Bot Preview 2" width="280" />
 </td>
-<td align="center" width="33%" style="padding: 15px;">
-  <img src="images/3.png" alt="Bot Preview 3" width="100%" style="border-radius: 12px; max-width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto;">
+<td width="40"></td>
+<td width="280" align="center">
+<img src="images/3.png" alt="Bot Preview 3" width="280" />
 </td>
 </tr>
 </table>
+
 </div>
 
 
