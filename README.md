@@ -1,5 +1,4 @@
-# Polymarket Bots
-
+# POLY BOTS
 
 ## Overview
 
