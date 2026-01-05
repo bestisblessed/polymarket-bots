@@ -1,27 +1,72 @@
 # Polymarket Bots
 
-A collection of Python scripts for interacting with Polymarket's various APIs including Data API, CLOB API, and real-time WebSocket streams.
 
-## API Notes
+## Overview
 
-See `API.md` for endpoint references, activity vs. positions details, and sports tag IDs.
+A collection of various scripts and fully functioning bots for Polymarket. Suitable for automation, trading, research & analytics, monitoring, etc.
 
-# Bots (Production)
+Bots published here are not meant to get you rich directly - rather build upon this and focus on improving on the strategies to make them more advanced. These cleaned up and streamlined examples should give you a great starting point even for a beginner to understand. 
+
+## Setup
+
+### Python Dependencies
+
+Install required Python packages:
+
+```bash
+pip install requests pandas python-dotenv pytz
+```
+
+For utility scripts that use the Polymarket SDK (e.g., `poly_data_get_user_positions_v2.py`, `poly_gamma_list_markets.py`), also install:
+
+```bash
+pip install polymarket-apis
+```
+
+### Environment Variables
+
+Every bot requires a `.env` file in its directory with your Pushover API credentials (***free lightweight app designed solely for sending and receiving notifications on any kind of device or service*** - [Pushover](https://pushover.net/)):
+
+- **`PUSHOVER_API_TOKEN`** - Your Pushover API token (required for notification bots)
+- **`PUSHOVER_GROUP_KEY`** - Your Pushover group key or user key (required for notification bots)
+
+Example `.env`:
+```
+PUSHOVER_API_TOKEN=your_token_here
+PUSHOVER_GROUP_KEY=your_group_key_here
+```
+
+## Utils
+
+One-off scripts in `utils/` for various Polymarket tasks
+
+- **`utils/poly_data_get_user_balance.py`** - Gets total holdings value across all markets for a user wallet address.
+- **`utils/poly_data_get_user_activity.py`** - Fetches user activity with pagination.
+	- Writes timestamped JSON under `data/user-activity/`.
+- **`utils/poly_data_get_event_markets_and_holders.py`** - Lists markets for an event slug with top holders.
+- **`utils/poly_data_get_user_positions_v1.py`** - Current positions using raw API requests.
+- **`utils/poly_data_get_user_positions_v2.py`** - Current positions with P&L and risk metadata.
+- **`utils/poly_gamma_list_markets.py`** - Lists markets with detailed metadata and filters.
+- **`utils/poly_gamma_list_markets_by_category.py`** - Lists markets filtered by category.
+- **`utils/poly_gamma_list_markets_by_volume.py`** - Lists top markets by trading volume.
+
+
+## Bots (Production)
 
 - **`my-openai-whale-bot`** - Monitors a fixed list of whale wallets and sends Pushover alerts for new trades.
-	- Pulls recent activity for each wallet and filters for BUY/SELL events.
+	- Pulls recent activity for each wallet and filters for BUY/SELL events
 	- Run via `bash my-openai-whale-bot/run.sh` with a local `.env` containing `PUSHOVER_API_TOKEN` and `PUSHOVER_GROUP_KEY`.
 
 - **`my-sports-bot`** - NFL market and holder tracking with alerting.
-	- Fetches NFL markets/games and lists top holders using the Data API.
-	- Monitors large positions or potential profit and sends Pushover alerts.
+	- Fetches NFL markets/games and lists top holders
+	- Monitors large positions or potential profit and sends Pushover alerts for new trades
 	- Cron helpers: `my-sports-bot/run_monitor_game_holders.sh` and `my-sports-bot/run_monitor_game_holders_profit.sh`.
 
 - **`my-creamster-monitor-bot`** - Watches a single wallet and pings Pushover on new activity.
 	- Calls the Polymarket Data API activity endpoint for the AltCreamster wallet.
 	- Run via `bash my-creamster-monitor-bot/run.sh` with local `.env` credentials.
 
-# Bots (Development)
+## Bots (Development & Hypothetical)
 
 - **Market screener bot** - Discover new opportunities quickly.
 	- Finds new markets by category/liquidity; scores them by volume/OI; outputs a ranked watchlist and sends alerts for new markets.
@@ -44,18 +89,3 @@ See `API.md` for endpoint references, activity vs. positions details, and sports
 	- Track selected wallets and mirror trades with caps and delays.
 	- Add safety checks for slippage, liquidity, and market limits.
 	- Uses: `PolymarketDataClient` for leaderboards/holders, `PolymarketClobClient` for mirroring trades.
-
-
-## Scripts Overview (utils)
-
-General-purpose helpers in `utils/`:
-
-- **`utils/poly_data_get_user_balance.py`** - Gets total holdings value across all markets for a user wallet address.
-- **`utils/poly_data_get_user_activity.py`** - Fetches user activity with pagination.
-	- Writes timestamped JSON under `data/user-activity/`.
-- **`utils/poly_data_get_event_markets_and_holders.py`** - Lists markets for an event slug with top holders.
-- **`utils/poly_data_get_user_positions_v1.py`** - Current positions using raw API requests.
-- **`utils/poly_data_get_user_positions_v2.py`** - Current positions with P&L and risk metadata.
-- **`utils/poly_gamma_list_markets.py`** - Lists markets with detailed metadata and filters.
-- **`utils/poly_gamma_list_markets_by_category.py`** - Lists markets filtered by category.
-- **`utils/poly_gamma_list_markets_by_volume.py`** - Lists top markets by trading volume.
