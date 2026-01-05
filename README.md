@@ -1,4 +1,4 @@
-# POLY BOTS
+<h1 align="center">POLY BOTS</h1>
 
 ## Overview
 
