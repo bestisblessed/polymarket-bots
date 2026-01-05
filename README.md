@@ -6,7 +6,7 @@ A collection of utility scripts and fully functioning 'beginner' bots for Polyma
 
 Bots published here are not meant to get you rich directly - rather build upon this and focus on improving on the strategies to make them more advanced. These cleaned up and streamlined examples should give you a great starting point even for a beginner to understand. 
 
-<div align="center" style="background-color: #f6f8fa; padding: 30px 20px; border-radius: 10px; margin: 30px 0;">
+<div align="center" style="background-color: #f6f8fa; padding: 30px 20px; border-radius: 10px; margin: 30px 0; max-width: 900px; margin-left: auto; margin-right: auto;">
 
 <a href="images/1.png"><img src="images/1.png" alt="Bot Preview 1" width="200" style="border-radius: 12px;"></a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
