@@ -8,20 +8,18 @@ Bots published here are not meant to get you rich directly - rather build upon t
 
 <div align="center">
 
-<table>
-<tr>
-<td width="280" align="center">
-<img src="images/1.png" alt="Bot Preview 1" width="280" />
-</td>
-<td width="40"></td>
-<td width="280" align="center">
-<img src="images/2.png" alt="Bot Preview 2" width="280" />
-</td>
-<td width="40"></td>
-<td width="280" align="center">
-<img src="images/3.png" alt="Bot Preview 3" width="280" />
-</td>
-</tr>
+<table cellpadding="20">
+  <tr>
+    <td align="center">
+      <img src="images/1.png" alt="Bot Preview 1" width="250">
+    </td>
+    <td align="center">
+      <img src="images/2.png" alt="Bot Preview 2" width="250">
+    </td>
+    <td align="center">
+      <img src="images/3.png" alt="Bot Preview 3" width="250">
+    </td>
+  </tr>
 </table>
 
 </div>
