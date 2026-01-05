@@ -1,2 +1,5 @@
+.env
+*.env
+.cursor
 data/
 testing/

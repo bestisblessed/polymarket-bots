@@ -5,7 +5,7 @@ Get holdings value for a user given wallet address
 import sys
 import requests
 
-default_wallet_address = "0x7fBCC3c7D3854016754ec186d8865DccD11a3533"
+default_wallet_address = "0x0000000000000000000000000000000000000000"  # Replace with your wallet address
 wallet_address = sys.argv[1] if len(sys.argv) > 1 else default_wallet_address
 
 resp = requests.get(

@@ -8,7 +8,7 @@ import json
 import os
 import requests
 
-default_wallet_address = "0x7fBCC3c7D3854016754ec186d8865DccD11a3533"
+default_wallet_address = "0x0000000000000000000000000000000000000000"  # Replace with your wallet address
 wallet_address = sys.argv[1] if len(sys.argv) > 1 else default_wallet_address
 print(f"\nFetching activity for {wallet_address}...")
 print("\n")

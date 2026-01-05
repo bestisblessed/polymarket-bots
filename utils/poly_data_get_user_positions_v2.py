@@ -17,7 +17,8 @@ import json
 from polymarket_apis import PolymarketDataClient
 
 data = PolymarketDataClient()
-positions = data.get_positions(user="0x7fBCC3c7D3854016754ec186d8865DccD11a3533")
+wallet_address = "0x0000000000000000000000000000000000000000"  # Replace with your wallet address
+positions = data.get_positions(user=wallet_address)
 
 for p in positions:
     print(p)

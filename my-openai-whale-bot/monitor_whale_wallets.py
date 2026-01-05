@@ -48,13 +48,13 @@ if not PUSHOVER_API_TOKEN or not PUSHOVER_GROUP_KEY:
     if load_dotenv_success:
         print("WARNING: PUSHOVER_API_TOKEN or PUSHOVER_GROUP_KEY not found in .env after loading")
         print("Expected format in .env:")
-        print('PUSHOVER_API_TOKEN="a6pac9nquibxeh59gioo4z53isbd9s"')
-        print('PUSHOVER_GROUP_KEY="ucdzy7t32br76dwht5qtz5mt7fg7n3"')
+        print('PUSHOVER_API_TOKEN="your_token_here"')
+        print('PUSHOVER_GROUP_KEY="your_group_key_here"')
     else:
         print("WARNING: No .env file found and PUSHOVER_API_TOKEN/PUSHOVER_GROUP_KEY not set")
         print("Create .env file with:")
-        print('PUSHOVER_API_TOKEN="a6pac9nquibxeh59gioo4z53isbd9s"')
-        print('PUSHOVER_GROUP_KEY="ucdzy7t32br76dwht5qtz5mt7fg7n3"')
+        print('PUSHOVER_API_TOKEN="your_token_here"')
+        print('PUSHOVER_GROUP_KEY="your_group_key_here"')
     PUSHOVER_ENABLED = False
 else:
     PUSHOVER_ENABLED = True
@@ -66,10 +66,8 @@ WHALES = {
     "0xLuck": "0xdba78eaec18da2455d4b78de38828c2d91f0ae61",
     "Iam100x": "0x804600942f9044bf4f4ec7f1815b186184e60a1b",
     "RootAccessed": "0x066d64fa7b2e352b9000a51c6b56f53128cce6e6",
-    # "seabass9": "0x7fBCC3c7D3854016754ec186d8865DccD11a3533",
     "CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
     # "George.Smiley": "0x2110ba2a1e18840109482ff4ddc547baeff45850",
-#    "AltCreamster": "0x899c7076e1e81f2d6bf5c78c140a943752fded9a",
 }
 API_URL = "https://data-api.polymarket.com/activity"
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
