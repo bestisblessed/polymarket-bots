@@ -6,13 +6,13 @@ A collection of utility scripts and fully functioning 'beginner' bots for Polyma
 
 Bots published here are not meant to get you rich directly - rather build upon this and focus on improving on the strategies to make them more advanced. These cleaned up and streamlined examples should give you a great starting point even for a beginner to understand. 
 
-<div align="center">
+<div align="center" style="background-color: #f6f8fa; padding: 30px 20px; border-radius: 10px; margin: 30px 0;">
 
-<a href="images/1.png"><img src="images/1.png" alt="Bot Preview 1" width="250"></a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="images/2.png"><img src="images/2.png" alt="Bot Preview 2" width="250"></a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="images/3.png"><img src="images/3.png" alt="Bot Preview 3" width="250"></a>
+<a href="images/1.png"><img src="images/1.png" alt="Bot Preview 1" width="200" style="border-radius: 12px;"></a>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="images/2.png"><img src="images/2.png" alt="Bot Preview 2" width="200" style="border-radius: 12px;"></a>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="images/3.png"><img src="images/3.png" alt="Bot Preview 3" width="200" style="border-radius: 12px;"></a>
 
 </div>
 
