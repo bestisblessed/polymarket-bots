@@ -1,10 +1,28 @@
-<h1 align="center">POLY BOTS</h1>
+<div align="center">
+<h1 style="border: none; border-bottom: none; padding-bottom: 0; margin-bottom: 20px;">POLY BOTS</h1>
+</div>
 
-## Overview
-
-A collection of various scripts and fully functioning bots for Polymarket. Suitable for automation, trading, research & analytics, monitoring, etc.
+A collection of utility scripts and fully functioning 'beginner' bots for Polymarket. Suitable for automation, trading, research & analytics, monitoring, arbitrage, etc.
 
 Bots published here are not meant to get you rich directly - rather build upon this and focus on improving on the strategies to make them more advanced. These cleaned up and streamlined examples should give you a great starting point even for a beginner to understand. 
+
+<div align="center">
+<table align="center">
+<tr>
+<td align="center" width="33%">
+  <img src="images/1.png" alt="Bot Preview 1" width="100%" style="border-radius: 8px; max-width: 300px;">
+</td>
+<td align="center" width="33%">
+  <img src="images/2.png" alt="Bot Preview 2" width="100%" style="border-radius: 8px; max-width: 300px;">
+</td>
+<td align="center" width="33%">
+  <img src="images/3.png" alt="Bot Preview 3" width="100%" style="border-radius: 8px; max-width: 300px;">
+</td>
+</tr>
+</table>
+
+</div>
+</div>
 
 ## Setup
 
