@@ -20,8 +20,6 @@ Bots published here are not meant to get you rich directly - rather build upon t
 </td>
 </tr>
 </table>
-
-</div>
 </div>
 
 ## Setup
