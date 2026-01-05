@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - Top-level scripts and utilities live in `utils/` (one-off API helpers).
 - Bot-specific workflows live in `my-*-bot/` directories, each with its own runner scripts and configs.
-- Documentation lives in `README.md`, `BOTS.md`, and `NOTES.md`.
+- Documentation lives in `README.md` and `API.md`.
 - Runtime outputs are commonly written to `data/` (git-ignored in `.gitignore`).
 
 ## Build, Test, and Development Commands
@@ -30,3 +30,4 @@ There is no build step; run scripts directly with Python or whatever is used.
 ## Agent-Specific Instructions
 - When adding or updating Polymarket API usage, consult the official docs directly, use only the exact flags/code shown there (no guess-and-check), never hallucinate, and cite the reference links you used.
 - If a script changes materially, update `README.md` to reflect the new or modified behavior.
+- For quick endpoint reference, see `API.md`.

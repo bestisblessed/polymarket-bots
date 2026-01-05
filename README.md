@@ -2,6 +2,10 @@
 
 A collection of Python scripts for interacting with Polymarket's various APIs including Data API, CLOB API, and real-time WebSocket streams.
 
+## API Notes
+
+See `API.md` for endpoint references, activity vs. positions details, and sports tag IDs.
+
 # Bots (Production)
 
 - **`my-openai-whale-bot`** - Monitors a fixed list of whale wallets and sends Pushover alerts for new trades.
