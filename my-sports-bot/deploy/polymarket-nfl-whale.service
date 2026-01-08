@@ -1,0 +1,18 @@
+[Unit]
+Description=Polymarket NFL Whale Monitor (unified service)
+After=network.target
+
+[Service]
+Type=simple
+User=trinity
+WorkingDirectory=/home/trinity/polymarket-bots/my-sports-bot
+Environment="PATH=/home/trinity/.pyenv/shims:/home/trinity/.pyenv/bin:/usr/bin:/bin"
+ExecStart=/home/trinity/.pyenv/shims/python nfl_whale_service.py
+Restart=always
+RestartSec=10
+
+# Logs: journalctl -u polymarket-nfl-whale -f
+
+[Install]
+WantedBy=multi-user.target
+
