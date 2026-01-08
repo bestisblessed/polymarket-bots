@@ -213,7 +213,11 @@ This bot uses **three different monitoring approaches** that complement each oth
 1. Ensure `.env` contains:
    - `PUSHOVER_API_TOKEN=...`
    - `PUSHOVER_GROUP_KEY=...`
+   - Optional: `NFL_PENDING_ORDER_THRESHOLD_USD=10000`
    - Optional: `NFL_FILL_THRESHOLD_USD=10000`
+   - Optional: `NFL_TRADES_INTERVAL_S=180`
+   - Optional: `NFL_HOLDERS_INTERVAL_S=300`
+   - Optional: `NFL_PROFIT_INTERVAL_S=480`
 2. Copy the unit template from `deploy/polymarket-nfl-whale.service` to:
    - `/etc/systemd/system/polymarket-nfl-whale.service`
 3. Enable + start:
@@ -224,3 +228,33 @@ This bot uses **three different monitoring approaches** that complement each oth
    - `journalctl -u polymarket-nfl-whale -f`
 
 With this setup, cron only needs to refresh games (e.g. weekly `get_nfl_games.py`). The service runs the monitoring continuously.
+
+### Environment variables (what they do + recommended values)
+
+These variables control **thresholds** and **polling frequency** in the unified service:
+
+- **`NFL_PENDING_ORDER_THRESHOLD_USD`**: Minimum USD value for a **pending order book** alert.\n
+  - Used by: `monitor_pending_orders.py` (WebSocket orderbook)\n
+  - Formula: `order_value = price * size`\n
+  - Recommended: `10000` for whale-style alerts. Use `1000` for very chatty testing.
+
+- **`NFL_FILL_THRESHOLD_USD`**: Minimum USD value for **executed trade/fill** alerts.\n
+  - Used by: `get_nfl_game_bets.py --notify` logic (Data API `/trades`)\n
+  - Recommended: `10000` for whale alerts. Use `1000` for testing.
+
+- **`NFL_TRADES_INTERVAL_S`**: How often (seconds) the service polls Data API trades.\n
+  - Used by: `nfl_whale_service.py` trades loop\n
+  - Lower = faster detection of executed fills, more API load.\n
+  - Recommended: `180` (3 min). If you want “faster”: `60`. If you want “lighter”: `300`.
+
+- **`NFL_HOLDERS_INTERVAL_S`**: How often (seconds) the service runs the holders snapshot monitor.\n
+  - Used by: `nfl_whale_service.py` holders loop (reuses `monitor_game_holders.py`)\n
+  - Lower = smaller detection delay for position changes, more API load.\n
+  - Recommended: `300` (5 min). If you want “lighter”: `600`.
+
+- **`NFL_PROFIT_INTERVAL_S`**: How often (seconds) the service runs the profit snapshot monitor.\n
+  - Used by: `nfl_whale_service.py` profit loop (reuses `monitor_game_holders_profit.py`)\n
+  - Recommended: `480` (8 min). If you want “lighter”: `900`.
+
+Notes:\n
+- Pending orders are realtime via WebSocket; trades/holders/profit are polling because they come from REST Data API. Official endpoints are listed here: `https://docs.polymarket.com/quickstart/reference/endpoints`.
