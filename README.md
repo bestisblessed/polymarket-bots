@@ -47,7 +47,7 @@ Dependencies referenced by the codebase (PyPI links):
 
 ### Environment Variables
 
-Notification bots require a `.env` file in each bot directory with your Pushover credentials. Reference: [Pushover](https://pushover.net/) and their API docs https://pushover.net/api.
+Notification bots require a `.env` file in each bot directory with your Pushover credentials (***free lightweight app designed solely for sending and receiving notifications on any kind of device or service***). Reference: [Pushover](https://pushover.net/) and their API docs https://pushover.net/api.
 
 - **`PUSHOVER_API_TOKEN`** - Your Pushover API token (required for notification bots)
 - **`PUSHOVER_GROUP_KEY`** - Your Pushover group key or user key (required for notification bots)
