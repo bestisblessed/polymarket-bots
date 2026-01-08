@@ -208,7 +208,13 @@ This bot uses **three different monitoring approaches** that complement each oth
 - Market discovery: `https://docs.polymarket.com/#markets`
 - Fills/trades: `https://docs.polymarket.com/#fills.`
 
-## Running as a single service (systemd on Raspberry Pi)
+## Running as a single service
+
+### Option 1: supervisord (recommended for process management)
+
+Supervisord is a process control system that provides auto-restart, logging, and easy monitoring. See [supervisord.org](https://supervisord.org/) for details.
+
+**Setup:**
 
 1. Ensure `.env` contains:
    - `PUSHOVER_API_TOKEN=...`
@@ -218,16 +224,53 @@ This bot uses **three different monitoring approaches** that complement each oth
    - Optional: `NFL_TRADES_INTERVAL_S=180`
    - Optional: `NFL_HOLDERS_INTERVAL_S=300`
    - Optional: `NFL_PROFIT_INTERVAL_S=480`
+
+2. Run the setup script on your Raspberry Pi:
+   ```bash
+   chmod +x deploy/supervisord-setup.sh
+   sudo ./deploy/supervisord-setup.sh
+   ```
+
+   Or manually:
+   ```bash
+   sudo apt-get install -y supervisor
+   sudo cp deploy/nfl-whale-supervisord.conf /etc/supervisor/conf.d/nfl-whale.conf
+   sudo supervisorctl reread
+   sudo supervisorctl update
+   sudo supervisorctl start nfl-whale
+   ```
+
+3. **Useful commands:**
+   - `sudo supervisorctl status nfl-whale` - Check status
+   - `sudo supervisorctl tail -f nfl-whale` - Follow logs
+   - `sudo supervisorctl restart nfl-whale` - Restart service
+   - `sudo supervisorctl stop nfl-whale` - Stop service
+   - `sudo supervisorctl start nfl-whale` - Start service
+
+4. **Logs:**
+   - `/home/trinity/polymarket-bots/my-sports-bot/log_nfl_whale_service.log`
+   - `/home/trinity/polymarket-bots/my-sports-bot/log_nfl_whale_service.err.log`
+
+### Option 2: systemd (native OS service)
+
+1. Ensure `.env` contains the same variables as above.
+
 2. Copy the unit template from `deploy/polymarket-nfl-whale.service` to:
    - `/etc/systemd/system/polymarket-nfl-whale.service`
-3. Enable + start:
-   - `sudo systemctl daemon-reload`
-   - `sudo systemctl enable polymarket-nfl-whale`
-   - `sudo systemctl start polymarket-nfl-whale`
-4. Tail logs:
-   - `journalctl -u polymarket-nfl-whale -f`
 
-With this setup, cron only needs to refresh games (e.g. weekly `get_nfl_games.py`). The service runs the monitoring continuously.
+3. Enable + start:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable polymarket-nfl-whale
+   sudo systemctl start polymarket-nfl-whale
+   ```
+
+4. Tail logs:
+   ```bash
+   journalctl -u polymarket-nfl-whale -f
+   ```
+
+With either setup, cron only needs to refresh games (e.g. weekly `get_nfl_games.py`). The service runs the monitoring continuously.
 
 ### Environment variables (what they do + recommended values)
 
