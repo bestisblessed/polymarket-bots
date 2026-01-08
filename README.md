@@ -19,23 +19,35 @@ Bots published here are not meant to get you rich directly - rather build upon t
 
 ## Setup
 
+### Python & Pip
+
+- Install **Python 3.9+**: https://www.python.org/downloads/
+- Ensure **pip** is available: https://pip.pypa.io/en/stable/installation/
+
 ### Python Dependencies
 
-Install required Python packages:
+Install all required packages in one step:
 
 ```bash
-pip install requests pandas python-dotenv pytz
+pip install -r requirements.txt
 ```
 
-For utility scripts that use the Polymarket SDK (e.g., `poly_data_get_user_positions_v2.py`, `poly_gamma_list_markets.py`), also install:
+Dependencies referenced by the codebase (PyPI links):
 
-```bash
-pip install polymarket-apis
-```
+- [`requests`](https://pypi.org/project/requests/) - HTTP calls to Polymarket & Pushover APIs
+- [`pandas`](https://pypi.org/project/pandas/) - holder snapshots & CSV/analysis helpers
+- [`python-dotenv`](https://pypi.org/project/python-dotenv/) - `.env` loading (sports bots)
+- [`pytz`](https://pypi.org/project/pytz/) - timezone helpers
+- [`polymarket-apis`](https://pypi.org/project/polymarket-apis/) - SDK helpers used in `utils/`
+
+### Polymarket References
+
+- Polymarket API docs: https://docs.polymarket.com/
+- Data API base: https://data-api.polymarket.com
 
 ### Environment Variables
 
-Every bot requires a `.env` file in its directory with your Pushover API credentials (***free lightweight app designed solely for sending and receiving notifications on any kind of device or service*** - [Pushover](https://pushover.net/)):
+Notification bots require a `.env` file in each bot directory with your Pushover credentials (***free lightweight app designed solely for sending and receiving notifications on any kind of device or service***). Reference: [Pushover](https://pushover.net/) and their API docs https://pushover.net/api.
 
 - **`PUSHOVER_API_TOKEN`** - Your Pushover API token (required for notification bots)
 - **`PUSHOVER_GROUP_KEY`** - Your Pushover group key or user key (required for notification bots)
