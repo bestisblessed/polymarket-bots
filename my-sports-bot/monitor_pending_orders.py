@@ -417,12 +417,17 @@ def load_state() -> Set[str]:
     try:
         with open(STATE_PATH, "r", encoding="utf-8") as f:
             state = json.load(f)
-            # Flatten all seen order IDs from all markets
+            # Check for new format first (saved by save_state)
+            if "_all_seen_orders" in state:
+                return set(state["_all_seen_orders"])
+            # Fallback to old format (for compatibility with older state files)
             all_ids = set()
             for market_state in state.values():
-                all_ids.update(market_state.get("seen_order_ids", []))
+                if isinstance(market_state, dict):
+                    all_ids.update(market_state.get("seen_order_ids", []))
             return all_ids
-    except Exception:
+    except Exception as e:
+        print(f"Error loading state: {e}")
         return set()
 
 
