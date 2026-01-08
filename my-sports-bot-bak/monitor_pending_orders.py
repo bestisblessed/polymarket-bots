@@ -33,8 +33,8 @@ MARKET_ENDPOINT = "https://gamma-api.polymarket.com/markets"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 GAMES_FILE = "data/nfl_games.json"
 STATE_PATH = os.path.join("data", "pending_orders_state.json")
-# Default $10k; override via env for testing or different sensitivity
-ORDER_THRESHOLD_USD = float(os.environ.get("NFL_PENDING_ORDER_THRESHOLD_USD", "10000"))
+# ORDER_THRESHOLD_USD = 1  # Lowered for testing (normally 10_000)
+ORDER_THRESHOLD_USD = 100_000  # Lowered for testing (normally 10_000)
 SUPPORTED_TYPES = {"spreads", "totals", "moneyline"}
 
 # Global state

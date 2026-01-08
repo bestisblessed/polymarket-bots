@@ -33,8 +33,8 @@ MARKET_ENDPOINT = "https://gamma-api.polymarket.com/markets"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 GAMES_FILE = "data/nfl_games.json"
 STATE_PATH = os.path.join("data", "pending_orders_state.json")
-# Default $10k; override via env for testing or different sensitivity
-ORDER_THRESHOLD_USD = float(os.environ.get("NFL_PENDING_ORDER_THRESHOLD_USD", "10000"))
+# ORDER_THRESHOLD_USD = 1  # Lowered for testing (normally 10_000)
+ORDER_THRESHOLD_USD = 100_000  # Lowered for testing (normally 10_000)
 SUPPORTED_TYPES = {"spreads", "totals", "moneyline"}
 
 # Global state
@@ -100,7 +100,7 @@ def get_all_token_ids(games: List[Dict]) -> List[str]:
     token_ids = []
     for game in games:
         clob_token_ids_raw = game.get("clobTokenIds", [])
-        outcomes_raw = game.get("outcomes", [])
+        outcomes = game.get("outcomes", [])
         
         if not clob_token_ids_raw:
             continue
@@ -117,15 +117,6 @@ def get_all_token_ids(games: List[Dict]) -> List[str]:
         
         if not isinstance(clob_token_ids, list):
             continue
-        
-        # Parse outcomes if it's a JSON string
-        if isinstance(outcomes_raw, str):
-            try:
-                outcomes = json.loads(outcomes_raw)
-            except (json.JSONDecodeError, TypeError):
-                outcomes = []
-        else:
-            outcomes = outcomes_raw if isinstance(outcomes_raw, list) else []
         
         # Map token IDs to market and outcome info
         for idx, token_id in enumerate(clob_token_ids):
@@ -477,7 +468,7 @@ def monitor_single_market_websocket(market_id: str) -> None:
     
     # Get token IDs from this market
     clob_token_ids_raw = market.get("clobTokenIds", [])
-    outcomes_raw = market.get("outcomes", [])
+    outcomes = market.get("outcomes", [])
     
     if not clob_token_ids_raw:
         print("Error: Market has no clobTokenIds")
@@ -496,15 +487,6 @@ def monitor_single_market_websocket(market_id: str) -> None:
     if not isinstance(clob_token_ids, list):
         print("Error: clobTokenIds is not a list")
         sys.exit(1)
-    
-    # Parse outcomes if it's a JSON string
-    if isinstance(outcomes_raw, str):
-        try:
-            outcomes = json.loads(outcomes_raw)
-        except (json.JSONDecodeError, TypeError):
-            outcomes = []
-    else:
-        outcomes = outcomes_raw if isinstance(outcomes_raw, list) else []
     
     # Map token IDs
     for idx, token_id in enumerate(clob_token_ids):

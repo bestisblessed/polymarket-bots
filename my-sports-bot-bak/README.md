@@ -79,20 +79,6 @@ A collection of scripts for monitoring NFL prediction markets on Polymarket, tra
 
 ## Monitoring Scripts
 
-### 0. Recommended: `nfl_whale_service.py` (single-service mode)
-
-- **Best way to run everything together**: one always-on process (ideal for `systemd` on a Raspberry Pi).
-- Runs the three monitoring approaches in one place:
-  - **Order book (real-time)**: uses the **CLOB WebSocket** to detect large pending orders (reuses `monitor_pending_orders.py`)
-  - **Trades (polling)**: polls the Data API `/trades` endpoint for executed fills (reuses `get_nfl_game_bets.py`)
-  - **Holders + profit (polling)**: polls the Data API `/holders` endpoint to detect snapshot deltas (reuses `monitor_game_holders*.py`)
-- **Why it isn’t “all realtime”**: Polymarket’s public WebSocket is for CLOB market data (orderbook/price updates). Trades/holders come from the Data API (REST), so those remain polling-based. See official base URLs here: `https://docs.polymarket.com/quickstart/reference/endpoints`.
-- **Run locally**: `python nfl_whale_service.py`
-- **Intervals (optional env vars)**:
-  - `NFL_TRADES_INTERVAL_S` (default 180)
-  - `NFL_HOLDERS_INTERVAL_S` (default 300)
-  - `NFL_PROFIT_INTERVAL_S` (default 480)
-
 ### 6. `monitor_game_holders.py`
 
 - **Snapshot-based monitoring:** Takes periodic snapshots of current holder positions and compares them.
@@ -194,8 +180,6 @@ This bot uses **three different monitoring approaches** that complement each oth
 | `get_nfl_game_bets.py`      | `gamma-api.polymarket.com/markets` | Market metadata                    |
 | `monitor_pending_orders.py` | `clob.polymarket.com`              | Active pending orders (order book) |
 | `monitor_pending_orders.py` | `gamma-api.polymarket.com/markets` | Market metadata                    |
-| `nfl_whale_service.py`      | `ws-subscriptions-clob.polymarket.com` | Real-time orderbook (WebSocket) |
-| `nfl_whale_service.py`      | `data-api.polymarket.com`          | Trades + holders polling           |
 | `list_top_game_holders*.py` | `data-api.polymarket.com/holders`  | Current positions                  |
 | `monitor_game_holders*.py`  | `data-api.polymarket.com/holders`  | Current positions                  |
 
@@ -208,19 +192,3 @@ This bot uses **three different monitoring approaches** that complement each oth
 - Market discovery: `https://docs.polymarket.com/#markets`
 - Fills/trades: `https://docs.polymarket.com/#fills.`
 
-## Running as a single service (systemd on Raspberry Pi)
-
-1. Ensure `.env` contains:
-   - `PUSHOVER_API_TOKEN=...`
-   - `PUSHOVER_GROUP_KEY=...`
-   - Optional: `NFL_FILL_THRESHOLD_USD=10000`
-2. Copy the unit template from `deploy/polymarket-nfl-whale.service` to:
-   - `/etc/systemd/system/polymarket-nfl-whale.service`
-3. Enable + start:
-   - `sudo systemctl daemon-reload`
-   - `sudo systemctl enable polymarket-nfl-whale`
-   - `sudo systemctl start polymarket-nfl-whale`
-4. Tail logs:
-   - `journalctl -u polymarket-nfl-whale -f`
-
-With this setup, cron only needs to refresh games (e.g. weekly `get_nfl_games.py`). The service runs the monitoring continuously.

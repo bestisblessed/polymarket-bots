@@ -17,7 +17,6 @@ from typing import Dict, Iterable, List, Tuple, Union
 
 import pytz
 import requests
-from dotenv import load_dotenv
 
 # #region agent log
 LOG_PATH = "/Users/td/Code/polymarket-bots/my-sports-bot/.cursor/debug.log"
@@ -37,12 +36,12 @@ def log_debug(location, message, data, hypothesis_id=None):
     except: pass
 # #endregion
 
-load_dotenv()
-
 NFL_GAME_TAG_ID = "100639"
 FILL_LIMIT = 500
 FILL_BATCH_SIZE = 100
-FILL_THRESHOLD_USD = float(os.environ.get("NFL_FILL_THRESHOLD_USD", "10000"))
+PUSHOVER_GROUP_KEY = "ucdzy7t32br76dwht5qtz5mt7fg7n3"
+PUSHOVER_API_TOKEN = "a75tq5kqignpk3p8ndgp66bske3bsi"
+FILL_THRESHOLD_USD = 10_000
 STATE_PATH = os.path.join("data", "last_fill_state.json")
 FILL_ENDPOINT = "https://data-api.polymarket.com/trades"
 MARKET_ENDPOINT = "https://gamma-api.polymarket.com/markets"
@@ -320,14 +319,9 @@ def usd_size(fill: Dict) -> float:
     return notional
 
 def send_pushover(message: str) -> None:
-    token = os.environ.get("PUSHOVER_API_TOKEN")
-    user = os.environ.get("PUSHOVER_GROUP_KEY")
-    if not token or not user:
-        print("Pushover credentials not found in .env, skipping notification")
-        return
     data = {
-        "token": token,
-        "user": user,
+        "token": PUSHOVER_API_TOKEN,
+        "user": PUSHOVER_GROUP_KEY,
         "message": message,
     }
     resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=10)
