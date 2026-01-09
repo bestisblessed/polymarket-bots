@@ -4,3 +4,4 @@ python-dotenv
 pytz
 polymarket-apis
 websocket-client
+py_clob_client
