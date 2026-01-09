@@ -72,6 +72,15 @@ One-off scripts in `utils/` for various Polymarket tasks
 - **`utils/poly_gamma_list_markets_by_category.py`** - Lists markets filtered by category.
 - **`utils/poly_gamma_list_markets_by_volume.py`** - Lists top markets by trading volume.
 
+## WebSocket Examples
+
+- **`endpoint-clob-websocket/monitor_moneyline_large_wagers.js`** - Subscribes to the CLOB market channel and sends Pushover alerts when large wagers (based on `price * size`) are detected for specified asset IDs.
+  - Run: `node endpoint-clob-websocket/monitor_moneyline_large_wagers.js <asset_id_1> <asset_id_2>`
+  - Or set `ASSET_IDS=asset1,asset2` and `MIN_NOTIONAL_USDC=10000` in your environment.
+  - Requires `PUSHOVER_API_TOKEN` and `PUSHOVER_GROUP_KEY` in your environment (or a local `.env` if you source it manually).
+- **`endpoint-clob-websocket/lookup_moneyline_asset_ids.py`** - Fetches event details from the Gamma API and prints the moneyline asset IDs for a given event slug.
+  - Run: `python endpoint-clob-websocket/lookup_moneyline_asset_ids.py nfl-la-car-2026-01-10`
+  - Optional: `--base-url https://gamma-api.polymarket.com`
 
 ## Bots (Production)
 
