@@ -1,7 +1,8 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 
-const tokenId = "90468297690119961729415596184451710609666058555177444095392763708049826586245";
+// const tokenId = "90468297690119961729415596184451710609666058555177444095392763708049826586245";
+const tokenId = "78771016858683590931968399206043033368231163700315025308842883779104149970413";
 const logFile = fs.createWriteStream("logs/log_orderbook.log", { flags: "a" });
 
 const ws = new WebSocket("wss://ws-subscriptions-clob.polymarket.com/ws/market");
