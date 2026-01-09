@@ -3,3 +3,4 @@ pandas
 python-dotenv
 pytz
 polymarket-apis
+websocket-client
