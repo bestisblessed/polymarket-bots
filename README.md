@@ -78,6 +78,9 @@ One-off scripts in `utils/` for various Polymarket tasks
   - Run: `node endpoint-clob-websocket/monitor_moneyline_large_wagers.js <asset_id_1> <asset_id_2>`
   - Or set `ASSET_IDS=asset1,asset2` and `MIN_NOTIONAL_USDC=10000` in your environment.
   - Requires `PUSHOVER_API_TOKEN` and `PUSHOVER_GROUP_KEY` in your environment (or a local `.env` if you source it manually).
+- **`endpoint-clob-websocket/lookup_moneyline_asset_ids.py`** - Reads `data/nfl_games.json` (from `my-sports-bot/get_nfl_games.py`) and prints the moneyline asset IDs for a given event slug.
+  - Run: `python endpoint-clob-websocket/lookup_moneyline_asset_ids.py nfl-la-car-2026-01-10`
+  - Optional: `--data path/to/nfl_games.json`
 
 ## Bots (Production)
 
