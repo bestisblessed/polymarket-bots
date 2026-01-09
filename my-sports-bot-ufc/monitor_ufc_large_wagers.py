@@ -88,55 +88,99 @@ def fetch_event_markets(event_slug: str) -> dict:
     """
     print(f"[INFO] Fetching markets for: {event_slug}")
     
-    # Fetch markets
-    # Ref: https://docs.polymarket.com/api-reference/core/get-market
-    resp = requests.get(
-        f"{GAMMA_API}/markets",
-        params={
-            "closed": "false",
-            "limit": 500,
-        },
-        timeout=60,
-    )
-    resp.raise_for_status()
-    all_markets = resp.json()
-    
-    # Try 1: Match by event slug
     event_markets = []
     event_title = None
-    event_actual_slug = event_slug  # Track actual slug for URL
+    event_actual_slug = event_slug
     
-    for market in all_markets:
-        events = market.get("events") or []
-        for event in events:
-            if event.get("slug") == event_slug:
-                event_markets.append(market)
-                if not event_title:
-                    event_title = event.get("title", event_slug)
-                    event_actual_slug = event_slug
-                break
-    
-    # Try 2: If no exact match, try keyword search
-    if not event_markets:
-        print(f"[INFO] No exact event match, trying keyword search...")
-        keywords = event_slug.lower().replace("-", " ").split()
+    # Try 1: Direct event slug lookup via /events endpoint
+    # Ref: https://gamma-api.polymarket.com/events?slug=<slug>
+    try:
+        resp = requests.get(
+            f"{GAMMA_API}/events",
+            params={"slug": event_slug},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        events_data = resp.json()
         
-        for market in all_markets:
-            question = market.get("question", "").lower()
-            slug = market.get("slug", "").lower()
-            searchable = f"{question} {slug}"
+        if events_data and len(events_data) > 0:
+            event = events_data[0]
+            event_title = event.get("title", event_slug)
+            event_actual_slug = event.get("slug", event_slug)
+            event_markets = event.get("markets", [])
+            print(f"[INFO] Found event: {event_title}")
+    except Exception as e:
+        print(f"[WARN] Events API error: {e}")
+    
+    # Try 2: Direct market slug lookup if event lookup failed
+    if not event_markets:
+        print(f"[INFO] Trying markets endpoint...")
+        try:
+            resp = requests.get(
+                f"{GAMMA_API}/markets",
+                params={"slug": event_slug},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            markets_data = resp.json()
             
-            # Check if all keywords match
-            if all(kw in searchable for kw in keywords):
-                event_markets.append(market)
-                if not event_title:
-                    events = market.get("events") or []
-                    if events:
-                        event_title = events[0].get("title", event_slug)
-                        event_actual_slug = events[0].get("slug", event_slug)
-                    else:
-                        event_title = market.get("question", event_slug)
-                        event_actual_slug = market.get("slug", event_slug)
+            if markets_data and len(markets_data) > 0:
+                # This returns the main market, get associated markets from events
+                main_market = markets_data[0]
+                event_title = main_market.get("question", event_slug)
+                event_actual_slug = main_market.get("slug", event_slug)
+                event_markets = [main_market]
+                
+                # Also fetch related markets from the event
+                events = main_market.get("events", [])
+                if events:
+                    event_slug_from_market = events[0].get("slug")
+                    if event_slug_from_market:
+                        resp2 = requests.get(
+                            f"{GAMMA_API}/events",
+                            params={"slug": event_slug_from_market},
+                            timeout=30,
+                        )
+                        if resp2.ok:
+                            events_data = resp2.json()
+                            if events_data:
+                                event_markets = events_data[0].get("markets", [])
+                                event_title = events_data[0].get("title", event_title)
+                                event_actual_slug = events_data[0].get("slug", event_actual_slug)
+        except Exception as e:
+            print(f"[WARN] Markets API error: {e}")
+    
+    # Try 3: Keyword search as fallback
+    if not event_markets:
+        print(f"[INFO] No exact match, trying keyword search...")
+        try:
+            resp = requests.get(
+                f"{GAMMA_API}/markets",
+                params={"closed": "false", "limit": 500},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            all_markets = resp.json()
+            
+            keywords = event_slug.lower().replace("-", " ").split()
+            
+            for market in all_markets:
+                question = market.get("question", "").lower()
+                slug = market.get("slug", "").lower()
+                searchable = f"{question} {slug}"
+                
+                if all(kw in searchable for kw in keywords):
+                    event_markets.append(market)
+                    if not event_title:
+                        events = market.get("events") or []
+                        if events:
+                            event_title = events[0].get("title", event_slug)
+                            event_actual_slug = events[0].get("slug", event_slug)
+                        else:
+                            event_title = market.get("question", event_slug)
+                            event_actual_slug = market.get("slug", event_slug)
+        except Exception as e:
+            print(f"[ERROR] Search failed: {e}")
     
     if not event_markets:
         print(f"[ERROR] No markets found for: {event_slug}")
