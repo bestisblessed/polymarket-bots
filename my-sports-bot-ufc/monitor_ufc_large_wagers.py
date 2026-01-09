@@ -23,6 +23,7 @@ import os
 import sys
 import time
 from datetime import datetime
+import textwrap
 
 import requests
 from dotenv import load_dotenv
@@ -40,7 +41,7 @@ DEFAULT_USD_THRESHOLD = 5000.0
 LOG_DIR = "logs"
 
 
-def send_pushover(message: str, url: str = None) -> None:
+def send_pushover(message: str, url: str = None, title: str = None) -> None:
     """Send a Pushover notification."""
     token = os.environ.get("PUSHOVER_API_TOKEN")
     user = os.environ.get("PUSHOVER_GROUP_KEY")
@@ -48,6 +49,8 @@ def send_pushover(message: str, url: str = None) -> None:
         print("[WARN] Pushover credentials not found in env, skipping notification")
         return
     data = {"token": token, "user": user, "message": message, "html": 1}
+    if title:
+        data["title"] = title
     if url:
         data["url"] = url
         data["url_title"] = "View Market"
@@ -71,6 +74,28 @@ def log_event(log_file: str, entry: str) -> None:
 def format_usd(value: float) -> str:
     """Format USD value with commas."""
     return f"${value:,.0f}"
+
+
+def format_labeled_wrapped(label: str, value: str, *, width: int = 84, hanging_indent: int = 2) -> str:
+    """
+    Format a labeled line with wrapping (no ellipsis).
+
+    Example:
+        Market: This is a long market question that wraps
+          onto the next line.
+    """
+    if not value:
+        return f"{label}: N/A"
+    wrapped = textwrap.fill(
+        str(value),
+        width=width,
+        subsequent_indent=" " * hanging_indent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    lines = wrapped.splitlines()
+    lines[0] = f"{label}: {lines[0]}"
+    return "\n".join(lines)
 
 
 def fetch_event_markets(event_slug: str) -> dict:
@@ -188,12 +213,20 @@ def fetch_event_markets(event_slug: str) -> dict:
         sys.exit(1)
     
     # Build token ID -> market info mapping
-    token_map = {}  # token_id -> {market_title, outcome, price, slug}
+    token_map = {}  # token_id -> {market_title, outcome, price, slug, market_type}
     all_token_ids = []
     
     for market in event_markets:
         question = market.get("question", "")
         slug = market.get("slug", "")
+        market_type = (
+            market.get("sportsMarketType")
+            or market.get("marketType")
+            or market.get("type")
+            or market.get("groupItemTitle")
+            or market.get("title")
+            or ""
+        )
         
         # Parse outcomes and clob token IDs
         outcomes_raw = market.get("outcomes")
@@ -237,6 +270,7 @@ def fetch_event_markets(event_slug: str) -> dict:
                 "outcome": outcome_name,
                 "price": price,
                 "slug": slug,
+                "market_type": market_type,
             }
             all_token_ids.append(token_id)
     
@@ -278,6 +312,8 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
         market_info = token_map.get(asset_id, {})
         market_title = market_info.get("market_title", "Unknown Market")
         outcome = market_info.get("outcome", "Unknown")
+        market_slug = market_info.get("slug", "") or ""
+        market_type = market_info.get("market_type", "") or ""
         
         # Log all trades
         log_entry = (
@@ -293,19 +329,40 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
         # Check threshold
         if usd_value >= threshold:
             potential_profit = size * (1 - price)
-            
-            # Format market title for notification
-            short_title = market_title
-            if len(short_title) > 50:
-                short_title = short_title[:47] + "..."
-            
-            msg = (
-                f"🥊 UFC WHALE ALERT\n\n"
-                f"BET: {outcome}\n"
-                f"Market: {short_title}\n"
-                f"{format_usd(usd_value)} @ {price:.0%}\n"
-                f"Potential win: {format_usd(potential_profit)}"
-            )
+
+            # Build a more descriptive, non-truncating notification.
+            event_title = event_info.get("event_title") or "UFC Event"
+            event_url = event_info.get("event_url") or ""
+
+            market_display_parts = []
+            if market_type and market_type != market_title:
+                market_display_parts.append(str(market_type))
+            if market_title:
+                market_display_parts.append(str(market_title))
+            market_display = " — ".join([p for p in market_display_parts if p])
+
+            details_lines = [
+                "Poly Sports Bot",
+                "🥊 UFC WHALE ALERT",
+                "",
+                f"Outcome: {outcome} (BUY)",
+                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
+                f"Est. profit: {format_usd(potential_profit)}",
+                "",
+                format_labeled_wrapped("Event", event_title),
+                format_labeled_wrapped("Market", market_display),
+            ]
+            if market_slug:
+                details_lines.append(format_labeled_wrapped("Market slug", market_slug))
+            if best_bid or best_ask:
+                bid_ask = f"{best_bid or 'N/A'} / {best_ask or 'N/A'}"
+                details_lines.append(f"Best bid/ask: {bid_ask}")
+
+            # Put link(s) at the bottom (as requested).
+            if event_url:
+                details_lines.extend(["", f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}", event_url])
+
+            msg = "\n".join(details_lines)
             
             print(f"\n{'='*60}")
             print(f"[ALERT] {timestamp}")
@@ -316,7 +373,7 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
             print(f"Potential Profit: {format_usd(potential_profit)}")
             print(f"{'='*60}\n")
             
-            send_pushover(msg, event_info["event_url"])
+            send_pushover(msg, event_info.get("event_url"))
 
 
 def run_monitor(event_slug: str, threshold: float):
