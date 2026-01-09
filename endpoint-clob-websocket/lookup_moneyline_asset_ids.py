@@ -1,8 +1,14 @@
+# Sources (Polymarket Gamma API):
+# - https://docs.polymarket.com/developers/gamma-markets-api/overview
+# - https://docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide
+
 import argparse
 import json
 from typing import Any, List
 
-DEFAULT_DATA_PATH = "data/nfl_games.json"
+import requests
+
+BASE_URL = "https://gamma-api.polymarket.com"
 
 
 def _parse_list(value: Any) -> List[Any]:
@@ -28,53 +34,39 @@ def _normalize_slug(value: str) -> str:
     return value.strip().lower()
 
 
-def _base_slug(value: str) -> str:
-    base = value
-    for marker in ["-spread-", "-total-", "-moneyline-"]:
-        if marker in base:
-            base = base.split(marker)[0]
-    if base.endswith("-moneyline"):
-        base = base[: -len("-moneyline")]
-    return base
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Lookup moneyline asset IDs for a given NFL event slug using data/nfl_games.json."
+        description="Lookup moneyline asset IDs for a given event slug using the Gamma API."
     )
     parser.add_argument("slug", help="Event slug (e.g. nfl-la-car-2026-01-10)")
     parser.add_argument(
-        "--data",
-        default=DEFAULT_DATA_PATH,
-        help=f"Path to nfl_games.json (default: {DEFAULT_DATA_PATH})",
+        "--base-url",
+        default=BASE_URL,
+        help=f"Gamma API base URL (default: {BASE_URL})",
     )
     args = parser.parse_args()
 
     slug = _normalize_slug(args.slug)
+    url = f"{args.base_url.rstrip('/')}/events/slug/{slug}"
 
-    with open(args.data, "r", encoding="utf-8") as handle:
-        markets = json.load(handle)
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    payload = response.json()
 
-    matches = []
-    for market in markets:
-        if market.get("sportsMarketType") != "moneyline":
-            continue
-        market_slug = _normalize_slug(str(market.get("slug", "")))
-        if not market_slug:
-            continue
-        if slug not in {_base_slug(market_slug), market_slug}:
-            continue
-        matches.append(market)
+    markets = payload.get("markets", [])
+    moneyline_markets = [
+        market for market in markets if market.get("sportsMarketType") == "moneyline"
+    ]
 
-    if not matches:
+    if not moneyline_markets:
         print(f"No moneyline markets found for slug: {slug}")
         return
 
-    for market in matches:
+    for market in moneyline_markets:
         token_ids = (
-            _parse_list(market.get("tokenIds"))
+            _parse_list(market.get("clobTokenIds"))
+            or _parse_list(market.get("tokenIds"))
             or _parse_list(market.get("token_ids"))
-            or _parse_list(market.get("clobTokenIds"))
         )
         outcomes = _parse_list(market.get("outcomes"))
         question = market.get("question") or market.get("title") or ""
