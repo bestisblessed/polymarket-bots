@@ -372,57 +372,40 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
         if usd_value >= threshold:
             potential_profit = size * (1 - price)
 
-            # Build a more descriptive, non-truncating notification.
+            # Build simplified notification message
             event_title = event_info.get("event_title") or "UFC Event"
             event_url = event_info.get("event_url") or ""
+            
+            # Strip parenthetical suffix from event title (e.g., "(Lightweight, Main Card)")
+            if "(" in event_title:
+                event_title = event_title[:event_title.rfind("(")].strip()
+            
+            # Format market type abbreviation (moneyline -> ML, etc.)
+            market_abbrev = ""
+            if market_type:
+                mt_lower = market_type.lower()
+                if "moneyline" in mt_lower or "winner" in mt_lower:
+                    market_abbrev = "ML"
+                elif "round" in mt_lower:
+                    market_abbrev = "Rounds"
+                elif "method" in mt_lower or "finish" in mt_lower:
+                    market_abbrev = "Method"
+                else:
+                    market_abbrev = market_type
+            
+            # Build outcome line: "Pimblett ML" or just "Pimblett" if no type
+            outcome_line = f"{outcome} {market_abbrev}".strip()
 
-            market_display_parts = []
-            if market_type and market_type != market_title:
-                market_display_parts.append(str(market_type))
-            if market_title:
-                market_display_parts.append(str(market_title))
-            market_display = " — ".join([p for p in market_display_parts if p])
-
-            details_lines = [
+            msg_lines = [
                 "🥊 UFC Whale Bot",
                 "",
-                f"Outcome: {outcome} (BUY)",
-                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
-                f"Est. profit: {format_usd(potential_profit)}",
-                "",
-                format_labeled_wrapped("Event", event_title),
-                format_labeled_wrapped("Market", market_display),
-            ]
-            if best_bid or best_ask:
-                bid_ask = f"{best_bid or 'N/A'} / {best_ask or 'N/A'}"
-                details_lines.append(f"Best bid/ask: {bid_ask}")
-
-            # Re-order to match the preferred notification layout:
-            # Header
-            # Event/Market/Best bid/ask
-            # Outcome/Wager/Profit
-            # URL at bottom
-            info_block = [
-                "🥊 UFC Whale Bot",
-                "",
-                format_labeled_wrapped("Event", event_title),
-                format_labeled_wrapped("Market", market_display),
-            ]
-            if best_bid or best_ask:
-                info_block.append(f"Best bid/ask: {bid_ask}")
-
-            wager_block = [
-                "",
-                f"Outcome: {outcome} (BUY)",
-                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
-                f"Est. profit: {format_usd(potential_profit)}",
+                f"Event: {event_title}",
+                outcome_line,
+                f"{format_usd(usd_value)} to win {format_usd(potential_profit)}",
+                f"{size:,.0f} Shares",
             ]
 
-            link_block = []
-            if event_url:
-                link_block = ["", event_url]
-
-            msg = "\n".join(info_block + wager_block + link_block)
+            msg = "\n".join(msg_lines)
             
             print(f"\n{'='*60}")
             print(f"[ALERT] {timestamp}")
