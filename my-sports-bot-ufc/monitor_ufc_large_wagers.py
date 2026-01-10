@@ -380,27 +380,12 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
             if "(" in event_title:
                 event_title = event_title[:event_title.rfind("(")].strip()
             
-            # Format market type abbreviation (moneyline -> ML, etc.)
-            market_abbrev = ""
-            if market_type:
-                mt_lower = market_type.lower()
-                if "moneyline" in mt_lower or "winner" in mt_lower:
-                    market_abbrev = "ML"
-                elif "round" in mt_lower:
-                    market_abbrev = "Rounds"
-                elif "method" in mt_lower or "finish" in mt_lower:
-                    market_abbrev = "Method"
-                else:
-                    market_abbrev = market_type
-            
-            # Build outcome line: "Pimblett ML" or just "Pimblett" if no type
-            outcome_line = f"{outcome} {market_abbrev}".strip()
-
             msg_lines = [
                 "🥊 UFC Whale Bot",
                 "",
                 f"Event: {event_title}",
-                outcome_line,
+                format_labeled_wrapped("Market", market_title, width=84, hanging_indent=2),
+                f"Bet: {outcome} @ {price:.0%}",
                 f"{format_usd(usd_value)} to win {format_usd(potential_profit)}",
                 f"{size:,.0f} Shares",
             ]
