@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -38,6 +39,10 @@ PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 # === Default Settings ===
 DEFAULT_USD_THRESHOLD = 5000.0
 LOG_DIR = "logs"
+
+# === Health Check Settings ===
+HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
+HEALTHCHECK_INTERVAL = 300  # 5 minutes
 
 
 def send_pushover(message: str, url: str = None) -> None:
@@ -66,6 +71,43 @@ def log_event(log_file: str, entry: str) -> None:
     os.makedirs(LOG_DIR, exist_ok=True)
     with open(log_file, "a") as f:
         f.write(entry + "\n")
+
+
+def send_health_ping(url: str) -> None:
+    """Send HTTP ping to healthcheck service."""
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.ok:
+            print(f"[INFO] Health check ping sent: {resp.status_code}")
+        else:
+            print(f"[WARN] Health check ping failed: {resp.status_code}")
+    except Exception as e:
+        print(f"[WARN] Health check ping error (non-fatal): {e}")
+
+
+def health_check_worker(url: str, interval: int, stop_event: threading.Event) -> None:
+    """
+    Background worker that sends periodic health check pings.
+
+    Runs in a daemon thread and exits gracefully when stop_event is set.
+    Uses time.sleep() with checking stop_event to allow quick shutdown.
+    """
+    print(f"[INFO] Health check worker started (interval: {interval}s)")
+
+    # Send initial ping on startup
+    send_health_ping(url)
+
+    while not stop_event.is_set():
+        # Sleep in 1-second increments to check stop_event frequently
+        for _ in range(interval):
+            if stop_event.is_set():
+                break
+            time.sleep(1)
+
+        if not stop_event.is_set():
+            send_health_ping(url)
+
+    print("[INFO] Health check worker stopped")
 
 
 def format_usd(value: float) -> str:
@@ -352,57 +394,82 @@ def run_monitor(event_slug: str, threshold: float):
             seen_markets.add(market_title)
             print(f"  - {market_title}")
     print()
-    
-    while True:
-        try:
-            ws = create_connection(WS_URL)
-            print(f"[INFO] Connected to WebSocket: {WS_URL}")
-            
-            # Subscribe to market channel for all token IDs
-            # Ref: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
-            subscribe_msg = {
-                "type": "market",
-                "assets_ids": token_ids
-            }
-            ws.send(json.dumps(subscribe_msg))
-            print(f"[INFO] Subscribed to {len(token_ids)} asset IDs")
-            print("[INFO] Listening for trades...\n")
-            
-            while True:
-                try:
-                    message = ws.recv()
-                    raw_data = json.loads(message)
-                    
-                    # Handle list response (initial book snapshots)
-                    if isinstance(raw_data, list):
-                        for item in raw_data:
-                            event_type = item.get("event_type")
-                            if event_type == "book":
-                                asset_id = item.get("asset_id", "")[:20]
-                                last_price = item.get("last_trade_price", "N/A")
-                                print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
-                        continue
-                    
-                    data = raw_data
-                    event_type = data.get("event_type")
-                    
-                    if event_type == "book":
-                        asset_id = data.get("asset_id", "")[:20]
-                        last_price = data.get("last_trade_price", "N/A")
-                        print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
-                    
-                    elif event_type == "price_change":
-                        process_price_change(data, token_map, event_info, threshold, log_file)
-                    
-                except WebSocketConnectionClosedException:
-                    print("[WARN] WebSocket connection closed, reconnecting...")
-                    break
-                    
-        except Exception as e:
-            print(f"[ERROR] WebSocket error: {e}")
-            
-        print("[INFO] Reconnecting in 5 seconds...")
-        time.sleep(5)
+
+    # === START HEALTH CHECK THREAD ===
+    health_check_thread = None
+    stop_health_check = threading.Event()
+
+    if HEALTHCHECK_URL:
+        print(f"[INFO] Starting health check pings to: {HEALTHCHECK_URL}")
+        print(f"[INFO] Health check interval: {HEALTHCHECK_INTERVAL}s")
+        health_check_thread = threading.Thread(
+            target=health_check_worker,
+            args=(HEALTHCHECK_URL, HEALTHCHECK_INTERVAL, stop_health_check),
+            daemon=True
+        )
+        health_check_thread.start()
+    else:
+        print("[INFO] Health check disabled (HEALTHCHECK_URL not set)")
+    print()
+
+    try:
+        while True:
+            try:
+                ws = create_connection(WS_URL)
+                print(f"[INFO] Connected to WebSocket: {WS_URL}")
+
+                # Subscribe to market channel for all token IDs
+                # Ref: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
+                subscribe_msg = {
+                    "type": "market",
+                    "assets_ids": token_ids
+                }
+                ws.send(json.dumps(subscribe_msg))
+                print(f"[INFO] Subscribed to {len(token_ids)} asset IDs")
+                print("[INFO] Listening for trades...\n")
+
+                while True:
+                    try:
+                        message = ws.recv()
+                        raw_data = json.loads(message)
+
+                        # Handle list response (initial book snapshots)
+                        if isinstance(raw_data, list):
+                            for item in raw_data:
+                                event_type = item.get("event_type")
+                                if event_type == "book":
+                                    asset_id = item.get("asset_id", "")[:20]
+                                    last_price = item.get("last_trade_price", "N/A")
+                                    print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
+                            continue
+
+                        data = raw_data
+                        event_type = data.get("event_type")
+
+                        if event_type == "book":
+                            asset_id = data.get("asset_id", "")[:20]
+                            last_price = data.get("last_trade_price", "N/A")
+                            print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
+
+                        elif event_type == "price_change":
+                            process_price_change(data, token_map, event_info, threshold, log_file)
+
+                    except WebSocketConnectionClosedException:
+                        print("[WARN] WebSocket connection closed, reconnecting...")
+                        break
+
+            except Exception as e:
+                print(f"[ERROR] WebSocket error: {e}")
+
+            print("[INFO] Reconnecting in 5 seconds...")
+            time.sleep(5)
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Shutting down gracefully...")
+        if health_check_thread:
+            stop_health_check.set()
+            health_check_thread.join(timeout=2)
+        sys.exit(0)
 
 
 def main():
