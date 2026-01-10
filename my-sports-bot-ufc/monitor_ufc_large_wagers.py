@@ -342,8 +342,7 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
             market_display = " — ".join([p for p in market_display_parts if p])
 
             details_lines = [
-                "Poly Sports Bot",
-                "🥊 UFC WHALE ALERT",
+                "🥊 UFC Whale Bot",
                 "",
                 f"Outcome: {outcome} (BUY)",
                 f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
@@ -352,17 +351,36 @@ def process_price_change(data: dict, token_map: dict, event_info: dict,
                 format_labeled_wrapped("Event", event_title),
                 format_labeled_wrapped("Market", market_display),
             ]
-            if market_slug:
-                details_lines.append(format_labeled_wrapped("Market slug", market_slug))
             if best_bid or best_ask:
                 bid_ask = f"{best_bid or 'N/A'} / {best_ask or 'N/A'}"
                 details_lines.append(f"Best bid/ask: {bid_ask}")
 
-            # Put link(s) at the bottom (as requested).
-            if event_url:
-                details_lines.extend(["", f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}", event_url])
+            # Re-order to match the preferred notification layout:
+            # Header
+            # Event/Market/Best bid/ask
+            # Outcome/Wager/Profit
+            # URL at bottom
+            info_block = [
+                "🥊 UFC Whale Bot",
+                "",
+                format_labeled_wrapped("Event", event_title),
+                format_labeled_wrapped("Market", market_display),
+            ]
+            if best_bid or best_ask:
+                info_block.append(f"Best bid/ask: {bid_ask}")
 
-            msg = "\n".join(details_lines)
+            wager_block = [
+                "",
+                f"Outcome: {outcome} (BUY)",
+                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
+                f"Est. profit: {format_usd(potential_profit)}",
+            ]
+
+            link_block = []
+            if event_url:
+                link_block = ["", event_url]
+
+            msg = "\n".join(info_block + wager_block + link_block)
             
             print(f"\n{'='*60}")
             print(f"[ALERT] {timestamp}")
