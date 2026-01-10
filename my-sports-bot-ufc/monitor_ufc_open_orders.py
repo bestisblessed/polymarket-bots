@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-UFC Large Wager Monitor via Polymarket CLOB WebSocket
+UFC Open Order Monitor via Polymarket CLOB WebSocket
 
-Monitors all markets for a UFC event and sends Pushover notifications
-when large wagers are detected.
+Monitors order book updates for a UFC event and sends Pushover notifications
+when large open orders are detected.
 
 Usage:
-    python monitor_ufc_large_wagers.py <event_slug> [--threshold <usd>]
+    python monitor_ufc_open_orders.py <event_slug> [--threshold <usd>]
 
 Example:
-    python monitor_ufc_large_wagers.py ufc-jus3-pad-2026-01-24 --threshold 5000
+    python monitor_ufc_open_orders.py ufc-jus3-pad-2026-01-24 --threshold 5000
 
 References:
 - Gamma API (markets): https://docs.polymarket.com/api-reference/core/get-market
@@ -28,7 +28,7 @@ import textwrap
 
 import requests
 from dotenv import load_dotenv
-from websocket import create_connection, WebSocketConnectionClosedException
+from websocket import WebSocketConnectionClosedException, create_connection
 
 load_dotenv()
 
@@ -39,11 +39,14 @@ PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 
 # === Default Settings ===
 DEFAULT_USD_THRESHOLD = 5000.0
-LOG_DIR = "logs"
+STATE_PATH = os.path.join("data", "ufc_open_orders_state.json")
 
-# === Health Check Settings ===
-HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
-HEALTHCHECK_INTERVAL = 300  # 5 minutes
+state_lock = threading.Lock()
+seen_orders = set()
+
+
+def ensure_data_dir() -> None:
+    os.makedirs("data", exist_ok=True)
 
 
 def send_pushover(message: str, url: str = None, title: str = None) -> None:
@@ -67,50 +70,6 @@ def send_pushover(message: str, url: str = None, title: str = None) -> None:
             print(f"[WARN] Pushover failed: {resp.status_code}")
     except Exception as e:
         print(f"[ERROR] Pushover error: {e}")
-
-
-def log_event(log_file: str, entry: str) -> None:
-    """Append entry to log file."""
-    os.makedirs(LOG_DIR, exist_ok=True)
-    with open(log_file, "a") as f:
-        f.write(entry + "\n")
-
-
-def send_health_ping(url: str) -> None:
-    """Send HTTP ping to healthcheck service."""
-    try:
-        resp = requests.get(url, timeout=10)
-        if resp.ok:
-            print(f"[INFO] Health check ping sent: {resp.status_code}")
-        else:
-            print(f"[WARN] Health check ping failed: {resp.status_code}")
-    except Exception as e:
-        print(f"[WARN] Health check ping error (non-fatal): {e}")
-
-
-def health_check_worker(url: str, interval: int, stop_event: threading.Event) -> None:
-    """
-    Background worker that sends periodic health check pings.
-
-    Runs in a daemon thread and exits gracefully when stop_event is set.
-    Uses time.sleep() with checking stop_event to allow quick shutdown.
-    """
-    print(f"[INFO] Health check worker started (interval: {interval}s)")
-
-    # Send initial ping on startup
-    send_health_ping(url)
-
-    while not stop_event.is_set():
-        # Sleep in 1-second increments to check stop_event frequently
-        for _ in range(interval):
-            if stop_event.is_set():
-                break
-            time.sleep(1)
-
-        if not stop_event.is_set():
-            send_health_ping(url)
-
-    print("[INFO] Health check worker stopped")
 
 
 def format_usd(value: float) -> str:
@@ -140,25 +99,56 @@ def format_labeled_wrapped(label: str, value: str, *, width: int = 84, hanging_i
     return "\n".join(lines)
 
 
+def load_state() -> None:
+    """Load previously seen order IDs from disk."""
+    if not os.path.exists(STATE_PATH):
+        return
+    try:
+        with open(STATE_PATH, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        with state_lock:
+            seen_orders.update(payload.get("seen_orders", []))
+        print(f"[INFO] Loaded {len(seen_orders)} previously seen orders")
+    except Exception as e:
+        print(f"[WARN] Failed to load state: {e}")
+
+
+def save_state() -> None:
+    """Persist seen order IDs to disk."""
+    ensure_data_dir()
+    with state_lock:
+        payload = {"seen_orders": sorted(seen_orders)}
+    try:
+        with open(STATE_PATH, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] Failed to save state: {e}")
+
+
+def generate_order_id(asset_id: str, side: str, price: float, size: float) -> str:
+    """Generate a unique ID for an aggregated book level."""
+    return f"{asset_id}:{side}:{price}:{size}"
+
+
 def fetch_event_markets(event_slug: str) -> dict:
     """
     Fetch all markets for a UFC event using the Gamma API.
-    
+
     Supports two modes:
     1. Event slug lookup (e.g., "ufc-jus3-pad-2026-01-24")
     2. Keyword search (e.g., "gaethje pimblett" or "ufc 311")
-    
+
     Returns a dict with:
     - event_title: str
-    - event_url: str  
+    - event_url: str
     - markets: list of market dicts with token mappings
     """
     print(f"[INFO] Fetching markets for: {event_slug}")
-    
+
     event_markets = []
     event_title = None
     event_actual_slug = event_slug
-    
+
     # Try 1: Direct event slug lookup via /events endpoint
     # Ref: https://gamma-api.polymarket.com/events?slug=<slug>
     try:
@@ -169,7 +159,7 @@ def fetch_event_markets(event_slug: str) -> dict:
         )
         resp.raise_for_status()
         events_data = resp.json()
-        
+
         if events_data and len(events_data) > 0:
             event = events_data[0]
             event_title = event.get("title", event_slug)
@@ -178,10 +168,10 @@ def fetch_event_markets(event_slug: str) -> dict:
             print(f"[INFO] Found event: {event_title}")
     except Exception as e:
         print(f"[WARN] Events API error: {e}")
-    
+
     # Try 2: Direct market slug lookup if event lookup failed
     if not event_markets:
-        print(f"[INFO] Trying markets endpoint...")
+        print("[INFO] Trying markets endpoint...")
         try:
             resp = requests.get(
                 f"{GAMMA_API}/markets",
@@ -190,14 +180,14 @@ def fetch_event_markets(event_slug: str) -> dict:
             )
             resp.raise_for_status()
             markets_data = resp.json()
-            
+
             if markets_data and len(markets_data) > 0:
                 # This returns the main market, get associated markets from events
                 main_market = markets_data[0]
                 event_title = main_market.get("question", event_slug)
                 event_actual_slug = main_market.get("slug", event_slug)
                 event_markets = [main_market]
-                
+
                 # Also fetch related markets from the event
                 events = main_market.get("events", [])
                 if events:
@@ -216,10 +206,10 @@ def fetch_event_markets(event_slug: str) -> dict:
                                 event_actual_slug = events_data[0].get("slug", event_actual_slug)
         except Exception as e:
             print(f"[WARN] Markets API error: {e}")
-    
+
     # Try 3: Keyword search as fallback
     if not event_markets:
-        print(f"[INFO] No exact match, trying keyword search...")
+        print("[INFO] No exact match, trying keyword search...")
         try:
             resp = requests.get(
                 f"{GAMMA_API}/markets",
@@ -228,14 +218,14 @@ def fetch_event_markets(event_slug: str) -> dict:
             )
             resp.raise_for_status()
             all_markets = resp.json()
-            
+
             keywords = event_slug.lower().replace("-", " ").split()
-            
+
             for market in all_markets:
                 question = market.get("question", "").lower()
                 slug = market.get("slug", "").lower()
                 searchable = f"{question} {slug}"
-                
+
                 if all(kw in searchable for kw in keywords):
                     event_markets.append(market)
                     if not event_title:
@@ -248,16 +238,16 @@ def fetch_event_markets(event_slug: str) -> dict:
                             event_actual_slug = market.get("slug", event_slug)
         except Exception as e:
             print(f"[ERROR] Search failed: {e}")
-    
+
     if not event_markets:
         print(f"[ERROR] No markets found for: {event_slug}")
         print("[INFO] Try using fighter names as keywords (e.g., 'gaethje pimblett')")
         sys.exit(1)
-    
+
     # Build token ID -> market info mapping
-    token_map = {}  # token_id -> {market_title, outcome, price, slug, market_type}
+    token_map = {}  # token_id -> {market_title, outcome, slug, market_type}
     all_token_ids = []
-    
+
     for market in event_markets:
         question = market.get("question", "")
         slug = market.get("slug", "")
@@ -269,55 +259,44 @@ def fetch_event_markets(event_slug: str) -> dict:
             or market.get("title")
             or ""
         )
-        
+
         # Parse outcomes and clob token IDs
         outcomes_raw = market.get("outcomes")
         tokens_raw = market.get("clobTokenIds")
-        prices_raw = market.get("outcomePrices")
-        
+
         # Handle string or list formats
         if isinstance(outcomes_raw, str):
             try:
                 outcomes = json.loads(outcomes_raw)
-            except:
+            except Exception:
                 outcomes = [outcomes_raw]
         else:
             outcomes = outcomes_raw or []
-            
+
         if isinstance(tokens_raw, str):
             try:
                 tokens = json.loads(tokens_raw)
-            except:
+            except Exception:
                 tokens = [tokens_raw]
         else:
             tokens = tokens_raw or []
-            
-        if isinstance(prices_raw, str):
-            try:
-                prices = [float(p) for p in json.loads(prices_raw)]
-            except:
-                prices = []
-        else:
-            prices = [float(p) for p in (prices_raw or [])]
-        
+
         # Map each token to its outcome
         for i, token_id in enumerate(tokens):
             if not token_id:
                 continue
             outcome_name = outcomes[i] if i < len(outcomes) else f"Outcome {i}"
-            price = prices[i] if i < len(prices) else None
-            
+
             token_map[token_id] = {
                 "market_title": question,
                 "outcome": outcome_name,
-                "price": price,
                 "slug": slug,
                 "market_type": market_type,
             }
             all_token_ids.append(token_id)
-    
+
     print(f"[INFO] Found {len(event_markets)} markets with {len(all_token_ids)} tokens")
-    
+
     return {
         "event_title": event_title,
         "event_slug": event_actual_slug,
@@ -328,163 +307,164 @@ def fetch_event_markets(event_slug: str) -> dict:
     }
 
 
-def process_price_change(data: dict, token_map: dict, event_info: dict, 
-                         threshold: float, log_file: str) -> None:
-    """
-    Process a price_change event and alert on large trades.
-    
-    Per https://docs.polymarket.com/developers/CLOB/websocket/market-channel:
-    price_changes contain: asset_id, price, size, side, best_bid, best_ask
-    """
-    price_changes = data.get("price_changes", [])
-    timestamp = datetime.now().isoformat()
-    
-    for change in price_changes:
-        asset_id = change.get("asset_id")
-        price = float(change.get("price", 0))
-        size = float(change.get("size", 0))
-        side = change.get("side", "")
-        best_bid = change.get("best_bid", "")
-        best_ask = change.get("best_ask", "")
-        
-        # Calculate USD value: size * price for a BUY
-        usd_value = size * price
-        
-        # Get market info from token map
-        market_info = token_map.get(asset_id, {})
-        market_title = market_info.get("market_title", "Unknown Market")
-        outcome = market_info.get("outcome", "Unknown")
-        market_slug = market_info.get("slug", "") or ""
-        market_type = market_info.get("market_type", "") or ""
-        
-        # Log all trades
-        log_entry = (
-            f"{timestamp} | {market_title} | {outcome} | {side} | "
-            f"size={size:.0f} | price={price:.4f} | usd={usd_value:.2f}"
-        )
-        log_event(log_file, log_entry)
-        
-        # Only alert on BUY side to avoid duplicate notifications
-        if side != "BUY":
+def parse_order_levels(raw_levels) -> list:
+    """Parse order levels from book payloads."""
+    levels = raw_levels or []
+    parsed = []
+    for level in levels:
+        try:
+            price = float(level.get("price", 0))
+            size = float(level.get("size", 0))
+        except (TypeError, ValueError):
             continue
-        
-        # Check threshold
-        if usd_value >= threshold:
-            potential_profit = size * (1 - price)
-
-            # Build a more descriptive, non-truncating notification.
-            event_title = event_info.get("event_title") or "UFC Event"
-            event_url = event_info.get("event_url") or ""
-
-            market_display_parts = []
-            if market_type and market_type != market_title:
-                market_display_parts.append(str(market_type))
-            if market_title:
-                market_display_parts.append(str(market_title))
-            market_display = " — ".join([p for p in market_display_parts if p])
-
-            details_lines = [
-                "🥊 UFC Whale Bot",
-                "",
-                f"Outcome: {outcome} (BUY)",
-                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
-                f"Est. profit: {format_usd(potential_profit)}",
-                "",
-                format_labeled_wrapped("Event", event_title),
-                format_labeled_wrapped("Market", market_display),
-            ]
-            if best_bid or best_ask:
-                bid_ask = f"{best_bid or 'N/A'} / {best_ask or 'N/A'}"
-                details_lines.append(f"Best bid/ask: {bid_ask}")
-
-            # Re-order to match the preferred notification layout:
-            # Header
-            # Event/Market/Best bid/ask
-            # Outcome/Wager/Profit
-            # URL at bottom
-            info_block = [
-                "🥊 UFC Whale Bot",
-                "",
-                format_labeled_wrapped("Event", event_title),
-                format_labeled_wrapped("Market", market_display),
-            ]
-            if best_bid or best_ask:
-                info_block.append(f"Best bid/ask: {bid_ask}")
-
-            wager_block = [
-                "",
-                f"Outcome: {outcome} (BUY)",
-                f"Wager: {format_usd(usd_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
-                f"Est. profit: {format_usd(potential_profit)}",
-            ]
-
-            link_block = []
-            if event_url:
-                link_block = ["", event_url]
-
-            msg = "\n".join(info_block + wager_block + link_block)
-            
-            print(f"\n{'='*60}")
-            print(f"[ALERT] {timestamp}")
-            print(f"Market: {market_title}")
-            print(f"Outcome: {outcome}")
-            print(f"Side: {side} | Shares: {size:,.0f} | Price: {price:.4f}")
-            print(f"Wager: {format_usd(usd_value)}")
-            print(f"Est. Profit: {format_usd(potential_profit)}")
-            print(f"{'='*60}\n")
-            
-            send_pushover(msg, event_info.get("event_url"))
+        parsed.append((price, size))
+    return parsed
 
 
-def run_monitor(event_slug: str, threshold: float):
+def get_best_prices(bids: list, asks: list) -> tuple:
+    """Return best bid and ask from parsed levels."""
+    best_bid = max((price for price, _ in bids), default=None)
+    best_ask = min((price for price, _ in asks), default=None)
+    return best_bid, best_ask
+
+
+def build_market_display(market_info: dict) -> str:
+    market_title = market_info.get("market_title", "")
+    market_type = market_info.get("market_type", "")
+    parts = []
+    if market_type and market_type != market_title:
+        parts.append(str(market_type))
+    if market_title:
+        parts.append(str(market_title))
+    return " — ".join([p for p in parts if p])
+
+
+def alert_on_order(
+    asset_id: str,
+    side: str,
+    price: float,
+    size: float,
+    best_bid: float,
+    best_ask: float,
+    token_map: dict,
+    event_info: dict,
+    threshold: float,
+) -> None:
+    order_value = price * size
+    if order_value < threshold:
+        return
+
+    order_id = generate_order_id(asset_id, side, price, size)
+    with state_lock:
+        if order_id in seen_orders:
+            return
+        seen_orders.add(order_id)
+    save_state()
+
+    market_info = token_map.get(asset_id, {})
+    outcome = market_info.get("outcome", "Unknown")
+    market_display = build_market_display(market_info)
+
+    best_bid_display = f"{best_bid:.2f}" if best_bid is not None else "N/A"
+    best_ask_display = f"{best_ask:.2f}" if best_ask is not None else "N/A"
+
+    info_block = [
+        "🥊 UFC Open Orders",
+        "",
+        format_labeled_wrapped("Event", event_info.get("event_title") or "UFC Event"),
+        format_labeled_wrapped("Market", market_display),
+        f"Best bid/ask: {best_bid_display} / {best_ask_display}",
+    ]
+
+    order_block = [
+        "",
+        f"Outcome: {outcome} ({side})",
+        f"Order: {format_usd(order_value)} @ {price:.0%}  |  Shares: {size:,.0f}",
+    ]
+
+    link_block = []
+    if event_info.get("event_url"):
+        link_block = ["", event_info["event_url"]]
+
+    msg = "\n".join(info_block + order_block + link_block)
+
+    timestamp = datetime.now().isoformat()
+    print(f"\n{'='*60}")
+    print(f"[ALERT] {timestamp}")
+    print(f"Market: {market_info.get('market_title', 'Unknown Market')}")
+    print(f"Outcome: {outcome}")
+    print(f"Side: {side} | Shares: {size:,.0f} | Price: {price:.4f}")
+    print(f"Order Value: {format_usd(order_value)}")
+    print(f"Best bid/ask: {best_bid_display} / {best_ask_display}")
+    print(f"{'='*60}\n")
+
+    send_pushover(msg, event_info.get("event_url"), title="UFC Open Order Alert")
+
+
+def handle_book_event(data: dict, token_map: dict, event_info: dict, threshold: float) -> None:
+    """
+    Handle order book updates and alert on large pending orders.
+
+    Per https://docs.polymarket.com/developers/CLOB/websocket/market-channel:
+    book messages contain bids/asks (aggregate price levels).
+    """
+    asset_id = data.get("asset_id")
+    if not asset_id:
+        return
+
+    raw_bids = data.get("bids", data.get("buys", []))
+    raw_asks = data.get("asks", data.get("sells", []))
+
+    bids = parse_order_levels(raw_bids)
+    asks = parse_order_levels(raw_asks)
+
+    best_bid, best_ask = get_best_prices(bids, asks)
+
+    for price, size in bids:
+        alert_on_order(
+            asset_id,
+            "BUY",
+            price,
+            size,
+            best_bid,
+            best_ask,
+            token_map,
+            event_info,
+            threshold,
+        )
+
+    for price, size in asks:
+        alert_on_order(
+            asset_id,
+            "SELL",
+            price,
+            size,
+            best_bid,
+            best_ask,
+            token_map,
+            event_info,
+            threshold,
+        )
+
+
+def run_monitor(event_slug: str, threshold: float) -> None:
     """Main monitoring loop with reconnection logic."""
-    
-    # Fetch event markets
     event_info = fetch_event_markets(event_slug)
     token_map = event_info["token_map"]
     token_ids = event_info["token_ids"]
-    
+
     if not token_ids:
         print("[ERROR] No token IDs found to monitor")
         sys.exit(1)
-    
-    # Setup logging
-    log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
-    
+
+    load_state()
+
     print()
-    print(f"[INFO] Starting UFC Whale Monitor")
+    print("[INFO] Starting UFC Open Order Monitor")
     print(f"[INFO] Event: {event_info['event_title']}")
     print(f"[INFO] URL: {event_info['event_url']}")
     print(f"[INFO] Threshold: {format_usd(threshold)}")
     print(f"[INFO] Monitoring {len(token_ids)} tokens across {len(event_info['markets'])} markets")
-    print(f"[INFO] Log file: {log_file}")
-    print()
-    
-    # Print market summary
-    print("[INFO] Markets being monitored:")
-    seen_markets = set()
-    for token_id, info in token_map.items():
-        market_title = info["market_title"]
-        if market_title not in seen_markets:
-            seen_markets.add(market_title)
-            print(f"  - {market_title}")
-    print()
-
-    # === START HEALTH CHECK THREAD ===
-    health_check_thread = None
-    stop_health_check = threading.Event()
-
-    if HEALTHCHECK_URL:
-        print(f"[INFO] Starting health check pings to: {HEALTHCHECK_URL}")
-        print(f"[INFO] Health check interval: {HEALTHCHECK_INTERVAL}s")
-        health_check_thread = threading.Thread(
-            target=health_check_worker,
-            args=(HEALTHCHECK_URL, HEALTHCHECK_INTERVAL, stop_health_check),
-            daemon=True
-        )
-        health_check_thread.start()
-    else:
-        print("[INFO] Health check disabled (HEALTHCHECK_URL not set)")
     print()
 
     try:
@@ -493,41 +473,27 @@ def run_monitor(event_slug: str, threshold: float):
                 ws = create_connection(WS_URL)
                 print(f"[INFO] Connected to WebSocket: {WS_URL}")
 
-                # Subscribe to market channel for all token IDs
-                # Ref: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
                 subscribe_msg = {
                     "type": "market",
-                    "assets_ids": token_ids
+                    "assets_ids": token_ids,
                 }
                 ws.send(json.dumps(subscribe_msg))
                 print(f"[INFO] Subscribed to {len(token_ids)} asset IDs")
-                print("[INFO] Listening for trades...\n")
+                print("[INFO] Listening for order book updates...\n")
 
                 while True:
                     try:
                         message = ws.recv()
                         raw_data = json.loads(message)
 
-                        # Handle list response (initial book snapshots)
                         if isinstance(raw_data, list):
                             for item in raw_data:
-                                event_type = item.get("event_type")
-                                if event_type == "book":
-                                    asset_id = item.get("asset_id", "")[:20]
-                                    last_price = item.get("last_trade_price", "N/A")
-                                    print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
+                                if item.get("event_type") == "book":
+                                    handle_book_event(item, token_map, event_info, threshold)
                             continue
 
-                        data = raw_data
-                        event_type = data.get("event_type")
-
-                        if event_type == "book":
-                            asset_id = data.get("asset_id", "")[:20]
-                            last_price = data.get("last_trade_price", "N/A")
-                            print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
-
-                        elif event_type == "price_change":
-                            process_price_change(data, token_map, event_info, threshold, log_file)
+                        if raw_data.get("event_type") == "book":
+                            handle_book_event(raw_data, token_map, event_info, threshold)
 
                     except WebSocketConnectionClosedException:
                         print("[WARN] WebSocket connection closed, reconnecting...")
@@ -541,38 +507,35 @@ def run_monitor(event_slug: str, threshold: float):
 
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
-        if health_check_thread:
-            stop_health_check.set()
-            health_check_thread.join(timeout=2)
         sys.exit(0)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Monitor UFC event markets for large wagers"
+        description="Monitor UFC event markets for large open orders"
     )
     parser.add_argument(
         "event_slug",
-        help="Polymarket event slug (e.g., ufc-jus3-pad-2026-01-24)"
+        help="Polymarket event slug (e.g., ufc-jus3-pad-2026-01-24)",
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=DEFAULT_USD_THRESHOLD,
-        help=f"USD threshold for whale alerts (default: {DEFAULT_USD_THRESHOLD})"
+        help=f"USD threshold for open order alerts (default: {DEFAULT_USD_THRESHOLD})",
     )
-    
+
     args = parser.parse_args()
-    
+
     print("=" * 60)
-    print("UFC Large Wager Monitor")
+    print("UFC Open Order Monitor")
     print("=" * 60)
     print()
     print("References:")
     print("- Gamma API: https://docs.polymarket.com/api-reference/core/get-market")
     print("- WebSocket: https://docs.polymarket.com/developers/CLOB/websocket/market-channel")
     print()
-    
+
     run_monitor(args.event_slug, args.threshold)
 
 

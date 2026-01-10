@@ -10,6 +10,8 @@ This bot uses the most efficient approach for whale detection:
 2. **Real-time Monitoring** (CLOB WebSocket) - Subscribes to `price_change` events for instant trade detection
 3. **Alert System** (Pushover) - Sends notifications when trades exceed USD threshold
 
+For open order monitoring (pending orders before fills), use the separate open-order script described below.
+
 ### Why WebSocket over Polling?
 
 | Approach | Speed | Missed Trades | API Calls |
@@ -28,6 +30,19 @@ This bot uses the most efficient approach for whale detection:
 
 # Using keyword search (if slug unknown)
 python3 monitor_ufc_large_wagers.py "gaethje pimblett" --threshold 5000
+```
+
+### Open Order Monitoring (Pending Orders)
+
+```bash
+# Basic usage with event slug
+./run_ufc_open_orders.sh ufc-jus3-pad-2026-01-24
+
+# With custom threshold
+./run_ufc_open_orders.sh ufc-jus3-pad-2026-01-24 10000
+
+# Using keyword search (if slug unknown)
+python3 monitor_ufc_open_orders.py "gaethje pimblett" --threshold 5000
 ```
 
 ## Setup
@@ -66,6 +81,11 @@ cp .env.example .env
 - Console logs all activity
 - Saves all trades to `logs/ufc_<event_slug>.log`
 - Sends Pushover notification for large wagers
+
+## Open Orders vs Fills
+
+- **Large wager monitor (`monitor_ufc_large_wagers.py`)**: alerts on `price_change` trade events (fills only).
+- **Open order monitor (`monitor_ufc_open_orders.py`)**: alerts on `book` updates (pending orders in the order book).
 
 ## Notes
 
