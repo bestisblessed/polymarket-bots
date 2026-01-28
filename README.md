@@ -88,6 +88,12 @@ One-off scripts in `utils/` for various Polymarket tasks
 	- Calls the Polymarket Data API activity endpoint for the AltCreamster wallet.
 	- Run via `bash my-creamster-monitor-bot/run.sh` with local `.env` credentials.
 
+## Dashboards / Data Exports
+
+- **`my UFC whale dashboard`** - Exports top holders for every UFC market in each event.
+	- Uses Gamma `/events` + Data API `/holders` to snapshot top 20 holders per market.
+	- Output: `data/ufc-holders/<event_slug>/holders.json` and `holders_flat.csv`.
+
 ## Bots (Development & Hypothetical)
 
 - **Market screener bot** - Discover new opportunities quickly.
