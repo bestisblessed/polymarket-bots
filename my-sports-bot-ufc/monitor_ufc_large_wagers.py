@@ -328,80 +328,71 @@ def fetch_event_markets(event_slug: str) -> dict:
     }
 
 
-def process_price_change(data: dict, token_map: dict, event_info: dict, 
-                         threshold: float, log_file: str) -> None:
+def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
+                             threshold: float, log_file: str) -> None:
     """
-    Process a price_change event and alert on large trades.
-    
+    Process a last_trade_price event and alert on large executed trades.
+
     Per https://docs.polymarket.com/developers/CLOB/websocket/market-channel:
-    price_changes contain: asset_id, price, size, side, best_bid, best_ask
+    last_trade_price includes asset_id, price, size, side, and timestamp.
     """
-    price_changes = data.get("price_changes", [])
-    timestamp = datetime.now().isoformat()
-    
-    for change in price_changes:
-        asset_id = change.get("asset_id")
-        price = float(change.get("price", 0))
-        size = float(change.get("size", 0))
-        side = change.get("side", "")
-        best_bid = change.get("best_bid", "")
-        best_ask = change.get("best_ask", "")
-        
-        # Calculate USD value: size * price for a BUY
-        usd_value = size * price
-        
-        # Get market info from token map
-        market_info = token_map.get(asset_id, {})
-        market_title = market_info.get("market_title", "Unknown Market")
-        outcome = market_info.get("outcome", "Unknown")
-        market_slug = market_info.get("slug", "") or ""
-        market_type = market_info.get("market_type", "") or ""
-        
-        # Log all trades
-        log_entry = (
-            f"{timestamp} | {market_title} | {outcome} | {side} | "
-            f"size={size:.0f} | price={price:.4f} | usd={usd_value:.2f}"
-        )
-        log_event(log_file, log_entry)
-        
-        # Only alert on BUY side to avoid duplicate notifications
-        if side != "BUY":
-            continue
-        
-        # Check threshold
-        if usd_value >= threshold:
-            potential_profit = size * (1 - price)
+    asset_id = data.get("asset_id")
+    price = float(data.get("price", 0))
+    size = float(data.get("size", 0))
+    side = data.get("side", "")
+    timestamp_ms = data.get("timestamp")
 
-            # Build simplified notification message
-            event_title = event_info.get("event_title") or "UFC Event"
-            event_url = event_info.get("event_url") or ""
-            
-            # Strip parenthetical suffix from event title (e.g., "(Lightweight, Main Card)")
-            if "(" in event_title:
-                event_title = event_title[:event_title.rfind("(")].strip()
-            
-            msg_lines = [
-                "🥊 UFC Whale Bot",
-                "",
-                f"Event: {event_title}",
-                format_labeled_wrapped("Market", market_title, width=84, hanging_indent=2),
-                f"Bet: {outcome} @ {price:.0%}",
-                f"{format_usd(usd_value)} to win {format_usd(potential_profit)}",
-                f"{size:,.0f} Shares",
-            ]
+    if timestamp_ms:
+        timestamp = datetime.fromtimestamp(int(timestamp_ms) / 1000).isoformat()
+    else:
+        timestamp = datetime.now().isoformat()
 
-            msg = "\n".join(msg_lines)
-            
-            print(f"\n{'='*60}")
-            print(f"[ALERT] {timestamp}")
-            print(f"Market: {market_title}")
-            print(f"Outcome: {outcome}")
-            print(f"Side: {side} | Size: {size:,.0f} | Price: {price:.4f}")
-            print(f"USD Value: {format_usd(usd_value)}")
-            print(f"Potential Profit: {format_usd(potential_profit)}")
-            print(f"{'='*60}\n")
-            
-            send_pushover(msg, event_info.get("event_url"))
+    usd_value = size * price
+
+    market_info = token_map.get(asset_id, {})
+    market_title = market_info.get("market_title", "Unknown Market")
+    outcome = market_info.get("outcome", "Unknown")
+
+    log_entry = (
+        f"{timestamp} | {market_title} | {outcome} | {side} | "
+        f"size={size:.4f} | price={price:.4f} | usd={usd_value:.2f}"
+    )
+    log_event(log_file, log_entry)
+
+    if side != "BUY":
+        return
+
+    if usd_value >= threshold:
+        potential_profit = size * (1 - price)
+
+        event_title = event_info.get("event_title") or "UFC Event"
+        event_url = event_info.get("event_url") or ""
+
+        if "(" in event_title:
+            event_title = event_title[:event_title.rfind("(")].strip()
+
+        msg_lines = [
+            "🥊 UFC Whale Bot",
+            "",
+            f"Event: {event_title}",
+            format_labeled_wrapped("Market", market_title, width=84, hanging_indent=2),
+            f"Bet: {outcome} @ {price:.0%}",
+            f"{format_usd(usd_value)} to win {format_usd(potential_profit)}",
+            f"{size:,.0f} Shares",
+        ]
+
+        msg = "\n".join(msg_lines)
+
+        print(f"\n{'='*60}")
+        print(f"[ALERT] {timestamp}")
+        print(f"Market: {market_title}")
+        print(f"Outcome: {outcome}")
+        print(f"Side: {side} | Size: {size:,.4f} | Price: {price:.4f}")
+        print(f"USD Value: {format_usd(usd_value)}")
+        print(f"Potential Profit: {format_usd(potential_profit)}")
+        print(f"{'='*60}\n")
+
+        send_pushover(msg, event_url)
 
 
 def run_monitor(event_slug: str, threshold: float):
@@ -494,8 +485,8 @@ def run_monitor(event_slug: str, threshold: float):
                             last_price = data.get("last_trade_price", "N/A")
                             print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
 
-                        elif event_type == "price_change":
-                            process_price_change(data, token_map, event_info, threshold, log_file)
+                        elif event_type == "last_trade_price":
+                            process_last_trade_price(data, token_map, event_info, threshold, log_file)
 
                     except WebSocketConnectionClosedException:
                         print("[WARN] WebSocket connection closed, reconnecting...")
