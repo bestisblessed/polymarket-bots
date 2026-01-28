@@ -23,11 +23,16 @@ This bot uses the most efficient approach for whale detection:
 # Basic usage with event slug
 ./run_ufc_monitor.sh ufc-jus3-pad-2026-01-24
 
-# With custom threshold
-./run_ufc_monitor.sh ufc-jus3-pad-2026-01-24 10000
-
 # Using keyword search (if slug unknown)
-python3 monitor_ufc_large_wagers.py "gaethje pimblett" --threshold 5000
+python3 monitor_ufc_large_wagers.py "gaethje pimblett"
+```
+
+## Threshold
+
+Set the whale alert threshold in `my-sports-bot-ufc/.env`:
+
+```bash
+THRESHOLD=1000
 ```
 
 ## Setup

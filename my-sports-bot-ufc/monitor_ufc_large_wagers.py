@@ -39,7 +39,6 @@ WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 
 # === Default Settings ===
-DEFAULT_USD_THRESHOLD = 5000.0
 LOG_DIR = "logs"
 
 # === Health Check Settings ===
@@ -117,6 +116,15 @@ def health_check_worker(url: str, interval: int, stop_event: threading.Event) ->
 def format_usd(value: float, *, decimals: int = 2) -> str:
     """Format USD value with commas and fixed decimals."""
     return f"${value:,.{decimals}f}"
+
+
+def parse_threshold_from_env() -> float:
+    """Read and parse THRESHOLD from environment (.env via dotenv)."""
+    raw = os.environ.get("THRESHOLD")
+    if raw is None or str(raw).strip() == "":
+        raise ValueError("Missing THRESHOLD in environment")
+    cleaned = str(raw).strip().replace("$", "").replace(",", "")
+    return float(cleaned)
 
 
 def format_labeled_wrapped(label: str, value: str, *, width: int = 84, hanging_indent: int = 2) -> str:
@@ -548,14 +556,15 @@ def main():
         "event_slug",
         help="Polymarket event slug (e.g., ufc-jus3-pad-2026-01-24)"
     )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=DEFAULT_USD_THRESHOLD,
-        help=f"USD threshold for whale alerts (default: {DEFAULT_USD_THRESHOLD})"
-    )
     
     args = parser.parse_args()
+
+    try:
+        threshold = parse_threshold_from_env()
+    except Exception as e:
+        print(f"[ERROR] Invalid or missing THRESHOLD in .env/env: {e}")
+        print("[INFO] Set THRESHOLD in my-sports-bot-ufc/.env, e.g. THRESHOLD=1000")
+        sys.exit(1)
     
     print("=" * 60)
     print("UFC Large Wager Monitor")
@@ -566,7 +575,7 @@ def main():
     print("- WebSocket: https://docs.polymarket.com/developers/CLOB/websocket/market-channel")
     print()
     
-    run_monitor(args.event_slug, args.threshold)
+    run_monitor(args.event_slug, threshold)
 
 
 if __name__ == "__main__":

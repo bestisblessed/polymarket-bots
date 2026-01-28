@@ -5,7 +5,7 @@
 # so it keeps running in the background even after you disconnect.
 #
 # Usage:
-#   ./run_ufc_monitor_daemon.sh start <event_slug> [threshold_usd]
+#   ./run_ufc_monitor_daemon.sh start <event_slug>
 #   ./run_ufc_monitor_daemon.sh stop
 #   ./run_ufc_monitor_daemon.sh status
 #   ./run_ufc_monitor_daemon.sh logs
@@ -13,7 +13,6 @@
 #
 # Examples:
 #   ./run_ufc_monitor_daemon.sh start ufc-jus3-pad-2026-01-24
-#   ./run_ufc_monitor_daemon.sh start ufc-jus3-pad-2026-01-24 10000
 #   ./run_ufc_monitor_daemon.sh logs
 #   ./run_ufc_monitor_daemon.sh attach
 #   ./run_ufc_monitor_daemon.sh stop
@@ -49,7 +48,10 @@ echo "[INFO] Using $SESSION_CMD for session management"
 
 start_monitor() {
     local event_slug="${1:-ufc-jus3-pad-2026-01-24}"
-    local threshold="${2:-5000}"
+
+    if [ -n "$2" ]; then
+        echo "[WARN] Threshold arg ignored; set THRESHOLD in .env"
+    fi
 
     if [ -z "$event_slug" ]; then
         echo "ERROR: event_slug required"
@@ -68,16 +70,16 @@ start_monitor() {
 
     echo "Starting UFC Whale Monitor..."
     echo "  Event: $event_slug"
-    echo "  Threshold: \$$threshold"
+    echo "  Threshold: (from .env THRESHOLD)"
     echo "  Session: $SESSION_NAME"
     echo ""
 
     export PYTHONUNBUFFERED=1
 
     if [ "$SESSION_CMD" = "screen" ]; then
-        screen -dmS "$SESSION_NAME" bash -c "cd '$SCRIPT_DIR' && python3 monitor_ufc_large_wagers.py '$event_slug' --threshold '$threshold'"
+        screen -dmS "$SESSION_NAME" bash -c "cd '$SCRIPT_DIR' && python3 monitor_ufc_large_wagers.py '$event_slug'"
     else  # tmux
-        tmux new-session -d -s "$SESSION_NAME" -c "$SCRIPT_DIR" "python3 monitor_ufc_large_wagers.py '$event_slug' --threshold '$threshold'"
+        tmux new-session -d -s "$SESSION_NAME" -c "$SCRIPT_DIR" "python3 monitor_ufc_large_wagers.py '$event_slug'"
     fi
 
     sleep 1
@@ -218,7 +220,7 @@ case "$COMMAND" in
         echo "Usage: $0 <command> [options]"
         echo ""
         echo "Commands:"
-        echo "  start <event_slug> [threshold]  Start monitor in background"
+        echo "  start <event_slug>              Start monitor in background"
         echo "  stop                            Stop the running monitor"
         echo "  attach                          Attach to running monitor console"
         echo "  logs                            View live logs from monitor"
@@ -226,7 +228,6 @@ case "$COMMAND" in
         echo ""
         echo "Examples:"
         echo "  $0 start ufc-jus3-pad-2026-01-24"
-        echo "  $0 start ufc-jus3-pad-2026-01-24 10000"
         echo "  $0 status"
         echo "  $0 logs"
         echo "  $0 attach"
