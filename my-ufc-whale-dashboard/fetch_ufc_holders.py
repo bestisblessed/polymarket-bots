@@ -383,6 +383,63 @@ def print_market_breakdown(df):
                 print("  No holders found")
 
 
+def print_prop_breakdown(df):
+    """Print per-market breakdown for non-moneyline markets (props/totals/etc.)."""
+    props_df = df[df['market_type'] != 'moneyline'].copy()
+
+    if props_df.empty:
+        print("\nNo non-moneyline (props/totals) markets found")
+        return
+
+    # Group by market (conditionId)
+    markets = props_df.groupby('conditionId').first()[['event_title', 'market_question', 'event_slug']].to_dict('index')
+
+    for condition_id, market_info in markets.items():
+        market_df = props_df[props_df['conditionId'] == condition_id].copy()
+
+        # Outcomes present
+        outcomes = market_df['outcome'].unique()
+        if len(outcomes) == 0:
+            continue
+
+        print("\n" + "=" * 90)
+        print(market_info.get('event_title', '').upper())
+        print(market_info.get('market_question', ''))
+        print("=" * 90)
+
+        total_usd = market_df['approxUsd'].sum()
+        total_tickets = len(market_df)
+
+        for outcome in outcomes:
+            side_df = market_df[market_df['outcome'] == outcome]
+            side_usd = side_df['approxUsd'].sum()
+            side_tickets = len(side_df)
+            money_pct = (side_usd / total_usd * 100) if total_usd > 0 else 0
+            ticket_pct = (side_tickets / total_tickets * 100) if total_tickets > 0 else 0
+
+            print(f"\n{outcome.upper()} - Money: {money_pct:.0f}% | Tickets: {ticket_pct:.0f}%")
+            print("-" * 70)
+
+            side_top = side_df.nlargest(15, 'approxUsd')
+            table_data = []
+            for i, (_, row) in enumerate(side_top.iterrows(), start=1):
+                table_data.append([
+                    i,
+                    row['holder'][:20],
+                    f"${row['approxUsd']:,.0f}" if pd.notna(row['approxUsd']) else "-",
+                    format_pnl(row.get('account_pnl'))
+                ])
+
+            if table_data:
+                print(tabulate(
+                    table_data,
+                    headers=["#", "Holder", "Position", "Account P&L"],
+                    tablefmt="simple"
+                ))
+            else:
+                print("  No holders found")
+
+
 def main():
     print("UFC Whale Dashboard - Sharp Betting Analytics")
     print("=" * 50)
@@ -408,6 +465,15 @@ def main():
     # Print tables
     print_top_20_table(df)
     print_market_breakdown(df)
+
+    # Optional: print props/totals/other markets
+    try:
+        choice = input("\nPrint non-moneyline (props/totals) markets as well? [y/N]: ").strip().lower()
+        if choice in ("y", "yes"):
+            print_prop_breakdown(df)
+    except EOFError:
+        # Non-interactive environments: skip props
+        pass
 
     print("\n" + "=" * 90)
     print("END OF REPORT")
