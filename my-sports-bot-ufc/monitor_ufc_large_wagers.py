@@ -25,6 +25,7 @@ import threading
 import time
 from datetime import datetime
 import textwrap
+from typing import Optional
 
 import requests
 from dotenv import load_dotenv
@@ -46,7 +47,7 @@ HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
 HEALTHCHECK_INTERVAL = 300  # 5 minutes
 
 
-def send_pushover(message: str, url: str = None, title: str = None) -> None:
+def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] = None) -> None:
     """Send a Pushover notification."""
     token = os.environ.get("PUSHOVER_API_TOKEN")
     user = os.environ.get("PUSHOVER_GROUP_KEY")
@@ -113,9 +114,9 @@ def health_check_worker(url: str, interval: int, stop_event: threading.Event) ->
     print("[INFO] Health check worker stopped")
 
 
-def format_usd(value: float) -> str:
-    """Format USD value with commas."""
-    return f"${value:,.0f}"
+def format_usd(value: float, *, decimals: int = 2) -> str:
+    """Format USD value with commas and fixed decimals."""
+    return f"${value:,.{decimals}f}"
 
 
 def format_labeled_wrapped(label: str, value: str, *, width: int = 84, hanging_indent: int = 2) -> str:
@@ -151,6 +152,7 @@ def fetch_event_markets(event_slug: str) -> dict:
     Returns a dict with:
     - event_title: str
     - event_url: str  
+    - fight_label: str
     - markets: list of market dicts with token mappings
     """
     print(f"[INFO] Fetching markets for: {event_slug}")
@@ -253,6 +255,22 @@ def fetch_event_markets(event_slug: str) -> dict:
         print(f"[ERROR] No markets found for: {event_slug}")
         print("[INFO] Try using fighter names as keywords (e.g., 'gaethje pimblett')")
         sys.exit(1)
+
+    def _derive_fight_label(title: Optional[str], markets: list) -> str:
+        """Best-effort fight label like 'Volkanovski vs. Lopes'."""
+        # Prefer the moneyline market group title, which is usually just the fight.
+        for m in markets or []:
+            if (m.get("sportsMarketType") or "") == "moneyline":
+                group = (m.get("groupItemTitle") or "").strip()
+                if group:
+                    return group
+
+        cleaned = (title or "").strip()
+        if "(" in cleaned:
+            cleaned = cleaned[:cleaned.rfind("(")].strip()
+        if ": " in cleaned:
+            cleaned = cleaned.split(": ", 1)[1].strip()
+        return cleaned or "UFC Fight"
     
     # Build token ID -> market info mapping
     token_map = {}  # token_id -> {market_title, outcome, price, slug, market_type}
@@ -269,6 +287,9 @@ def fetch_event_markets(event_slug: str) -> dict:
             or market.get("title")
             or ""
         )
+
+        group_item_title = (market.get("groupItemTitle") or "").strip()
+        sports_market_type = (market.get("sportsMarketType") or "").strip()
         
         # Parse outcomes and clob token IDs
         outcomes_raw = market.get("outcomes")
@@ -313,15 +334,20 @@ def fetch_event_markets(event_slug: str) -> dict:
                 "price": price,
                 "slug": slug,
                 "market_type": market_type,
+                "group_item_title": group_item_title,
+                "sports_market_type": sports_market_type,
             }
             all_token_ids.append(token_id)
     
     print(f"[INFO] Found {len(event_markets)} markets with {len(all_token_ids)} tokens")
+
+    fight_label = _derive_fight_label(event_title, event_markets)
     
     return {
         "event_title": event_title,
         "event_slug": event_actual_slug,
         "event_url": f"https://polymarket.com/event/{event_actual_slug}",
+        "fight_label": fight_label,
         "markets": event_markets,
         "token_map": token_map,
         "token_ids": all_token_ids,
@@ -352,6 +378,8 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
     market_info = token_map.get(asset_id, {})
     market_title = market_info.get("market_title", "Unknown Market")
     outcome = market_info.get("outcome", "Unknown")
+    group_item_title = market_info.get("group_item_title", "")
+    sports_market_type = market_info.get("sports_market_type", "")
 
     log_entry = (
         f"{timestamp} | {market_title} | {outcome} | {side} | "
@@ -367,25 +395,31 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
 
         event_title = event_info.get("event_title") or "UFC Event"
         event_url = event_info.get("event_url") or ""
+        fight_label = event_info.get("fight_label") or "UFC Fight"
 
         if "(" in event_title:
             event_title = event_title[:event_title.rfind("(")].strip()
 
+        if sports_market_type == "moneyline":
+            market_display = f"{fight_label} - Moneyline"
+        elif group_item_title:
+            market_display = f"{fight_label} - {group_item_title}"
+        else:
+            market_display = market_title
+
         msg_lines = [
             "🥊 UFC Whale Bot",
-            "",
             f"Event: {event_title}",
-            format_labeled_wrapped("Market", market_title, width=84, hanging_indent=2),
+            format_labeled_wrapped("Market", market_display, width=84, hanging_indent=2),
             f"Bet: {outcome} @ {price:.0%}",
-            f"{format_usd(usd_value)} to win {format_usd(potential_profit)}",
-            f"{size:,.0f} Shares",
+            f"Size: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({size:,.2f} Shares)",
         ]
 
         msg = "\n".join(msg_lines)
 
         print(f"\n{'='*60}")
         print(f"[ALERT] {timestamp}")
-        print(f"Market: {market_title}")
+        print(f"Market: {market_display}")
         print(f"Outcome: {outcome}")
         print(f"Side: {side} | Size: {size:,.4f} | Price: {price:.4f}")
         print(f"USD Value: {format_usd(usd_value)}")
