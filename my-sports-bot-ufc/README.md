@@ -1,20 +1,20 @@
 # UFC Whale Monitor Bot
 
-Real-time monitoring of Polymarket UFC fight markets for whale activity using the CLOB WebSocket API.
+Real-time monitoring of Polymarket UFC fight markets for whale activity using the Polymarket Data API.
 
 ## Workflow Overview
 
 This bot uses the most efficient approach for whale detection:
 
 1. **Market Discovery** (Gamma API) - Fetches all markets for a UFC event
-2. **Real-time Monitoring** (CLOB WebSocket) - Subscribes to `price_change` events for instant trade detection
+2. **Trade Monitoring** (Data API) - Polls executed trades for the event markets
 3. **Alert System** (Pushover) - Sends notifications when trades exceed USD threshold
 
-### Why WebSocket over Polling?
+### Why Data API over Holders Polling?
 
 | Approach | Speed | Missed Trades | API Calls |
 |----------|-------|---------------|-----------|
-| WebSocket (this bot) | Real-time (~ms) | None | 1 connection |
+| Data API polling (this bot) | Near real-time (seconds) | Minimal | Moderate |
 | Polling `/holders` | Delayed (30s+) | Possible | Many per minute |
 
 ## Usage
@@ -45,21 +45,15 @@ cp .env.example .env
 ## API References
 
 - **Gamma API (markets)**: https://docs.polymarket.com/api-reference/core/get-market
-- **WebSocket Overview**: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
-- **Market Channel**: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
+- **Trades (Data API)**: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
 
 ## How It Works
 
 1. Fetches all markets for the specified UFC event from Gamma API
 2. Extracts all `clobTokenIds` (one per outcome per market)
-3. Opens WebSocket connection to `wss://ws-subscriptions-clob.polymarket.com/ws/market`
-4. Subscribes to the `market` channel with all token IDs
-5. Listens for `price_change` events containing:
-   - `asset_id`: Token being traded
-   - `size`: Number of shares
-   - `price`: Trade price (0-1)
-   - `side`: BUY or SELL
-6. Calculates USD value (`size * price`) and alerts if above threshold
+3. Polls the Data API `/trades` endpoint for executed trades in the event markets
+4. Deduplicates trades based on transaction hash/timestamp
+5. Calculates USD value (`size * price`) and alerts if above threshold
 
 ## Output
 
@@ -69,6 +63,7 @@ cp .env.example .env
 
 ## Notes
 
-- Only BUY side triggers alerts (avoids duplicate notifications)
+- Alerts include trade side (BUY/SELL)
 - Supports both exact event slug and keyword search
-- Auto-reconnects on WebSocket disconnection
+- Polling interval is short to minimize delays
+- The Data API `/trades` feed is used to avoid order-book `price_change` noise from placed/canceled orders
