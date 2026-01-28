@@ -416,7 +416,6 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
             market_display = market_title
 
         msg_lines = [
-            "🥊 UFC Whale Bot",
             f"Event: {event_title}",
             format_labeled_wrapped("Market", market_display, width=84, hanging_indent=2),
             f"Bet: {outcome} @ {price:.0%}",
@@ -434,7 +433,7 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url)
+        send_pushover(msg, event_url, title="UFC Whale Monitor 🥊")
 
 
 def run_monitor(event_slug: str, threshold: float):
