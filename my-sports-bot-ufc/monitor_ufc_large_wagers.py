@@ -6,10 +6,11 @@ Monitors all markets for a UFC event and sends Pushover notifications
 when large wagers are detected.
 
 Usage:
-    python monitor_ufc_large_wagers.py <event_slug> [--threshold <usd>]
+    python monitor_ufc_large_wagers.py [all|<event_slug>]
 
 Example:
-    python monitor_ufc_large_wagers.py ufc-jus3-pad-2026-01-24 --threshold 5000
+    python monitor_ufc_large_wagers.py all
+    python monitor_ufc_large_wagers.py ufc-jus3-pad-2026-01-24
 
 References:
 - Gamma API (markets): https://docs.polymarket.com/api-reference/core/get-market
@@ -26,6 +27,7 @@ import time
 from datetime import datetime
 import textwrap
 from typing import Optional
+import re
 
 import requests
 from dotenv import load_dotenv
@@ -37,6 +39,7 @@ load_dotenv()
 GAMMA_API = "https://gamma-api.polymarket.com"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
+PUSHOVER_TITLE = "UFC Whale Monitor 🥊"
 
 # === Default Settings ===
 LOG_DIR = "logs"
@@ -54,8 +57,7 @@ def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] 
         print("[WARN] Pushover credentials not found in env, skipping notification")
         return
     data = {"token": token, "user": user, "message": message, "html": 1}
-    if title:
-        data["title"] = title
+    data["title"] = title or PUSHOVER_TITLE
     if url:
         data["url"] = url
         data["url_title"] = "View Market"
@@ -125,6 +127,115 @@ def parse_threshold_from_env() -> float:
         raise ValueError("Missing THRESHOLD in environment")
     cleaned = str(raw).strip().replace("$", "").replace(",", "")
     return float(cleaned)
+
+
+def clean_event_title(title: Optional[str]) -> str:
+    cleaned = (title or "").strip()
+    if "(" in cleaned:
+        cleaned = cleaned[:cleaned.rfind("(")].strip()
+    # Normalize UFC prefix titles: "UFC ...: X" -> "UFC ... - X"
+    cleaned = re.sub(r"^(UFC[^:]{0,80})\s*:\s*", r"\1 - ", cleaned)
+    return cleaned
+
+
+def derive_fight_label(event_title: Optional[str], markets: list) -> str:
+    """Best-effort fight label like 'Volkanovski vs. Lopes'."""
+    for m in markets or []:
+        if (m.get("sportsMarketType") or "") == "moneyline":
+            group = (m.get("groupItemTitle") or "").strip()
+            if group:
+                return group
+
+    cleaned = clean_event_title(event_title)
+    if ": " in cleaned:
+        cleaned = cleaned.split(": ", 1)[1].strip()
+    elif cleaned.startswith("UFC") and " - " in cleaned:
+        cleaned = cleaned.split(" - ", 1)[1].strip()
+    return cleaned or "UFC Fight"
+
+
+def build_token_map_for_event(*, event_slug: str, event_title: Optional[str], markets: list) -> dict:
+    """Build token map + token IDs for a single event."""
+    event_url = f"https://polymarket.com/event/{event_slug}"
+    event_title_clean = clean_event_title(event_title)
+    fight_label = derive_fight_label(event_title, markets)
+
+    token_map = {}
+    token_ids = []
+
+    for market in markets or []:
+        question = market.get("question", "")
+        slug = market.get("slug", "")
+        market_type = (
+            market.get("sportsMarketType")
+            or market.get("marketType")
+            or market.get("type")
+            or market.get("groupItemTitle")
+            or market.get("title")
+            or ""
+        )
+
+        group_item_title = (market.get("groupItemTitle") or "").strip()
+        sports_market_type = (market.get("sportsMarketType") or "").strip()
+
+        outcomes_raw = market.get("outcomes")
+        tokens_raw = market.get("clobTokenIds")
+        prices_raw = market.get("outcomePrices")
+
+        if isinstance(outcomes_raw, str):
+            try:
+                outcomes = json.loads(outcomes_raw)
+            except Exception:
+                outcomes = [outcomes_raw]
+        else:
+            outcomes = outcomes_raw or []
+
+        if isinstance(tokens_raw, str):
+            try:
+                tokens = json.loads(tokens_raw)
+            except Exception:
+                tokens = [tokens_raw]
+        else:
+            tokens = tokens_raw or []
+
+        if isinstance(prices_raw, str):
+            try:
+                prices = [float(p) for p in json.loads(prices_raw)]
+            except Exception:
+                prices = []
+        else:
+            prices = [float(p) for p in (prices_raw or [])]
+
+        for i, token_id in enumerate(tokens):
+            if not token_id:
+                continue
+            outcome_name = outcomes[i] if i < len(outcomes) else f"Outcome {i}"
+            price = prices[i] if i < len(prices) else None
+
+            token_map[token_id] = {
+                "event_slug": event_slug,
+                "event_title": event_title_clean,
+                "event_url": event_url,
+                "fight_label": fight_label,
+                "market_title": question,
+                "outcome": outcome_name,
+                "price": price,
+                "slug": slug,
+                "market_type": market_type,
+                "group_item_title": group_item_title,
+                "sports_market_type": sports_market_type,
+            }
+            token_ids.append(token_id)
+
+    return {
+        "event_slug": event_slug,
+        "event_title": event_title_clean,
+        "event_url": event_url,
+        "fight_label": fight_label,
+        "markets": markets or [],
+        "token_map": token_map,
+        "token_ids": token_ids,
+    }
 
 
 def format_labeled_wrapped(label: str, value: str, *, width: int = 84, hanging_indent: int = 2) -> str:
@@ -264,106 +375,57 @@ def fetch_event_markets(event_slug: str) -> dict:
         print("[INFO] Try using fighter names as keywords (e.g., 'gaethje pimblett')")
         sys.exit(1)
 
-    def _derive_fight_label(title: Optional[str], markets: list) -> str:
-        """Best-effort fight label like 'Volkanovski vs. Lopes'."""
-        # Prefer the moneyline market group title, which is usually just the fight.
-        for m in markets or []:
-            if (m.get("sportsMarketType") or "") == "moneyline":
-                group = (m.get("groupItemTitle") or "").strip()
-                if group:
-                    return group
+    state = build_token_map_for_event(
+        event_slug=event_actual_slug,
+        event_title=event_title,
+        markets=event_markets,
+    )
 
-        cleaned = (title or "").strip()
-        if "(" in cleaned:
-            cleaned = cleaned[:cleaned.rfind("(")].strip()
-        if ": " in cleaned:
-            cleaned = cleaned.split(": ", 1)[1].strip()
-        return cleaned or "UFC Fight"
-    
-    # Build token ID -> market info mapping
-    token_map = {}  # token_id -> {market_title, outcome, price, slug, market_type}
-    all_token_ids = []
-    
-    for market in event_markets:
-        question = market.get("question", "")
-        slug = market.get("slug", "")
-        market_type = (
-            market.get("sportsMarketType")
-            or market.get("marketType")
-            or market.get("type")
-            or market.get("groupItemTitle")
-            or market.get("title")
-            or ""
+    print(f"[INFO] Found {len(event_markets)} markets with {len(state['token_ids'])} tokens")
+    return state
+
+
+def fetch_ufc_fight_events(*, limit: int = 200) -> list:
+    """Fetch all active, open UFC fight events (moneyline present)."""
+    offset = 0
+    fights = []
+
+    while True:
+        resp = requests.get(
+            f"{GAMMA_API}/events",
+            params={
+                "tag_slug": "ufc",
+                "active": "true",
+                "closed": "false",
+                "archived": "false",
+                "limit": limit,
+                "offset": offset,
+            },
+            timeout=60,
         )
+        resp.raise_for_status()
+        events = resp.json() or []
+        if not events:
+            break
 
-        group_item_title = (market.get("groupItemTitle") or "").strip()
-        sports_market_type = (market.get("sportsMarketType") or "").strip()
-        
-        # Parse outcomes and clob token IDs
-        outcomes_raw = market.get("outcomes")
-        tokens_raw = market.get("clobTokenIds")
-        prices_raw = market.get("outcomePrices")
-        
-        # Handle string or list formats
-        if isinstance(outcomes_raw, str):
-            try:
-                outcomes = json.loads(outcomes_raw)
-            except:
-                outcomes = [outcomes_raw]
-        else:
-            outcomes = outcomes_raw or []
-            
-        if isinstance(tokens_raw, str):
-            try:
-                tokens = json.loads(tokens_raw)
-            except:
-                tokens = [tokens_raw]
-        else:
-            tokens = tokens_raw or []
-            
-        if isinstance(prices_raw, str):
-            try:
-                prices = [float(p) for p in json.loads(prices_raw)]
-            except:
-                prices = []
-        else:
-            prices = [float(p) for p in (prices_raw or [])]
-        
-        # Map each token to its outcome
-        for i, token_id in enumerate(tokens):
-            if not token_id:
+        for ev in events:
+            markets = ev.get("markets") or []
+            if not markets:
                 continue
-            outcome_name = outcomes[i] if i < len(outcomes) else f"Outcome {i}"
-            price = prices[i] if i < len(prices) else None
-            
-            token_map[token_id] = {
-                "market_title": question,
-                "outcome": outcome_name,
-                "price": price,
-                "slug": slug,
-                "market_type": market_type,
-                "group_item_title": group_item_title,
-                "sports_market_type": sports_market_type,
-            }
-            all_token_ids.append(token_id)
-    
-    print(f"[INFO] Found {len(event_markets)} markets with {len(all_token_ids)} tokens")
+            has_moneyline = any((m.get("sportsMarketType") or "") == "moneyline" for m in markets)
+            if not has_moneyline:
+                continue
+            slug = ev.get("slug")
+            if not slug:
+                continue
+            fights.append(ev)
 
-    fight_label = _derive_fight_label(event_title, event_markets)
-    
-    return {
-        "event_title": event_title,
-        "event_slug": event_actual_slug,
-        "event_url": f"https://polymarket.com/event/{event_actual_slug}",
-        "fight_label": fight_label,
-        "markets": event_markets,
-        "token_map": token_map,
-        "token_ids": all_token_ids,
-    }
+        offset += len(events)
+
+    return fights
 
 
-def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
-                             threshold: float, log_file: str) -> None:
+def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> None:
     """
     Process a last_trade_price event and alert on large executed trades.
 
@@ -389,6 +451,13 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
     group_item_title = market_info.get("group_item_title", "")
     sports_market_type = market_info.get("sports_market_type", "")
 
+    event_slug = market_info.get("event_slug", "unknown")
+    event_title = market_info.get("event_title") or "UFC Event"
+    event_url = market_info.get("event_url") or ""
+    # Fight label is already in the Event line; Market line should be the specific market only.
+
+    log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
+
     log_entry = (
         f"{timestamp} | {market_title} | {outcome} | {side} | "
         f"size={size:.4f} | price={price:.4f} | usd={usd_value:.2f}"
@@ -401,17 +470,10 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
     if usd_value >= threshold:
         potential_profit = size * (1 - price)
 
-        event_title = event_info.get("event_title") or "UFC Event"
-        event_url = event_info.get("event_url") or ""
-        fight_label = event_info.get("fight_label") or "UFC Fight"
-
-        if "(" in event_title:
-            event_title = event_title[:event_title.rfind("(")].strip()
-
         if sports_market_type == "moneyline":
-            market_display = f"{fight_label} - Moneyline"
+            market_display = "Moneyline"
         elif group_item_title:
-            market_display = f"{fight_label} - {group_item_title}"
+            market_display = group_item_title
         else:
             market_display = market_title
 
@@ -433,42 +495,81 @@ def process_last_trade_price(data: dict, token_map: dict, event_info: dict,
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url, title="UFC Whale Monitor 🥊")
+        send_pushover(msg, event_url)
 
 
-def run_monitor(event_slug: str, threshold: float):
+def run_monitor(target: str, threshold: float):
     """Main monitoring loop with reconnection logic."""
-    
-    # Fetch event markets
-    event_info = fetch_event_markets(event_slug)
-    token_map = event_info["token_map"]
-    token_ids = event_info["token_ids"]
-    
+
+    if (target or "").lower() == "all":
+        print("[INFO] Fetching all active UFC fights...")
+        events = fetch_ufc_fight_events()
+        if not events:
+            print("[ERROR] No UFC fight events found")
+            sys.exit(1)
+
+        token_map = {}
+        token_ids = []
+        total_markets = 0
+
+        for ev in events:
+            slug = ev.get("slug")
+            title = ev.get("title")
+            markets = ev.get("markets") or []
+            state = build_token_map_for_event(event_slug=slug, event_title=title, markets=markets)
+            total_markets += len(state.get("markets") or [])
+            for tid, info in state["token_map"].items():
+                token_map[tid] = info
+            token_ids.extend(state["token_ids"])
+
+        # Deduplicate, keep stable-ish order
+        seen = set()
+        token_ids = [tid for tid in token_ids if not (tid in seen or seen.add(tid))]
+
+        label = f"ALL UFC fights ({len(events)} fights)"
+        log_hint = f"{LOG_DIR}/ufc_<event_slug>.log"
+
+        print()
+        print(f"[INFO] Starting UFC Whale Monitor")
+        print(f"[INFO] Target: {label}")
+        print(f"[INFO] Threshold: {format_usd(threshold)}")
+        print(f"[INFO] Monitoring {len(token_ids)} tokens across {total_markets} markets")
+        print(f"[INFO] Log files: {log_hint}")
+        print()
+    else:
+        event_info = fetch_event_markets(target)
+        token_map = event_info["token_map"]
+        token_ids = event_info["token_ids"]
+
     if not token_ids:
         print("[ERROR] No token IDs found to monitor")
         sys.exit(1)
-    
-    # Setup logging
-    log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
-    
-    print()
-    print(f"[INFO] Starting UFC Whale Monitor")
-    print(f"[INFO] Event: {event_info['event_title']}")
-    print(f"[INFO] URL: {event_info['event_url']}")
-    print(f"[INFO] Threshold: {format_usd(threshold)}")
-    print(f"[INFO] Monitoring {len(token_ids)} tokens across {len(event_info['markets'])} markets")
-    print(f"[INFO] Log file: {log_file}")
-    print()
-    
-    # Print market summary
-    print("[INFO] Markets being monitored:")
-    seen_markets = set()
-    for token_id, info in token_map.items():
-        market_title = info["market_title"]
-        if market_title not in seen_markets:
-            seen_markets.add(market_title)
-            print(f"  - {market_title}")
-    print()
+
+        log_file = os.path.join(LOG_DIR, f"ufc_{event_info['event_slug']}.log")
+
+        print()
+        print(f"[INFO] Starting UFC Whale Monitor")
+        print(f"[INFO] Event: {event_info['event_title']}")
+        print(f"[INFO] URL: {event_info['event_url']}")
+        print(f"[INFO] Threshold: {format_usd(threshold)}")
+        print(f"[INFO] Monitoring {len(token_ids)} tokens across {len(event_info['markets'])} markets")
+        print(f"[INFO] Log file: {log_file}")
+        print()
+
+        print("[INFO] Markets being monitored:")
+        seen_markets = set()
+        for _, info in token_map.items():
+            market_title = info["market_title"]
+            if market_title not in seen_markets:
+                seen_markets.add(market_title)
+                print(f"  - {market_title}")
+        print()
+
+    def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
+        for i in range(0, len(asset_ids), chunk_size):
+            chunk = asset_ids[i : i + chunk_size]
+            ws_conn.send(json.dumps({"type": "market", "assets_ids": chunk}))
+        print(f"[INFO] Subscribed to {len(asset_ids)} asset IDs")
 
     # === START HEALTH CHECK THREAD ===
     health_check_thread = None
@@ -493,14 +594,9 @@ def run_monitor(event_slug: str, threshold: float):
                 ws = create_connection(WS_URL)
                 print(f"[INFO] Connected to WebSocket: {WS_URL}")
 
-                # Subscribe to market channel for all token IDs
+                # Subscribe to market channel for token IDs (chunked)
                 # Ref: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
-                subscribe_msg = {
-                    "type": "market",
-                    "assets_ids": token_ids
-                }
-                ws.send(json.dumps(subscribe_msg))
-                print(f"[INFO] Subscribed to {len(token_ids)} asset IDs")
+                _subscribe_assets(ws, token_ids)
                 print("[INFO] Listening for trades...\n")
 
                 while True:
@@ -527,7 +623,7 @@ def run_monitor(event_slug: str, threshold: float):
                             print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
 
                         elif event_type == "last_trade_price":
-                            process_last_trade_price(data, token_map, event_info, threshold, log_file)
+                            process_last_trade_price(data, token_map, threshold)
 
                     except WebSocketConnectionClosedException:
                         print("[WARN] WebSocket connection closed, reconnecting...")
@@ -553,7 +649,9 @@ def main():
     )
     parser.add_argument(
         "event_slug",
-        help="Polymarket event slug (e.g., ufc-jus3-pad-2026-01-24)"
+        nargs="?",
+        default="all",
+        help="Event slug (e.g., ufc-jus3-pad-2026-01-24) or 'all'"
     )
     
     args = parser.parse_args()

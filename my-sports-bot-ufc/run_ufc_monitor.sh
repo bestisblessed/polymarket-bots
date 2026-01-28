@@ -2,9 +2,11 @@
 # UFC Whale Monitor Runner
 #
 # Usage:
-#   ./run_ufc_monitor.sh <event_slug>
+#   ./run_ufc_monitor.sh [all|<event_slug>]
 #
 # Examples:
+#   ./run_ufc_monitor.sh
+#   ./run_ufc_monitor.sh all
 #   ./run_ufc_monitor.sh ufc-jus3-pad-2026-01-24
 
 set -e
@@ -12,7 +14,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-EVENT_SLUG="${1:-ufc-jus3-pad-2026-01-24}"
+EVENT_SLUG="${1:-all}"
 
 if [ -n "$2" ]; then
   echo "[WARN] Threshold arg ignored; set THRESHOLD in .env"

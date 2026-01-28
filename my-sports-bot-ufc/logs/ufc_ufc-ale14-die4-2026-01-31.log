@@ -4,3 +4,6 @@
 2026-01-28T05:27:22.562000 | Fight to Go the Distance? | Yes | BUY | size=2.0816 | price=0.4900 | usd=1.02
 2026-01-28T05:27:34.722000 | Fight to Go the Distance? | No | BUY | size=1.9808 | price=0.5200 | usd=1.03
 2026-01-28T05:31:18.619000 | UFC 325: Volkanovski vs. Lopes (Featherweight, Main Card) | Volkanovski | BUY | size=2.1379 | price=0.5800 | usd=1.24
+2026-01-28T06:35:29.891000 | Fight to Go the Distance? | Yes | SELL | size=3.9200 | price=0.4800 | usd=1.88
+2026-01-28T06:35:34.969000 | UFC 325: Volkanovski vs. Lopes (Featherweight, Main Card) | Lopes | SELL | size=2.8400 | price=0.4200 | usd=1.19
+2026-01-28T06:35:39.648000 | Will Diego Lopes win by KO or TKO? | Yes | SELL | size=4.6900 | price=0.2100 | usd=0.98

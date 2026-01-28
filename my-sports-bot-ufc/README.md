@@ -20,7 +20,13 @@ This bot uses the most efficient approach for whale detection:
 ## Usage
 
 ```bash
-# Basic usage with event slug
+# Monitor all active UFC fights (default)
+./run_ufc_monitor.sh
+
+# Explicit "all"
+./run_ufc_monitor.sh all
+
+# Monitor a single fight by event slug
 ./run_ufc_monitor.sh ufc-jus3-pad-2026-01-24
 
 # Using keyword search (if slug unknown)

@@ -5,13 +5,15 @@
 # so it keeps running in the background even after you disconnect.
 #
 # Usage:
-#   ./run_ufc_monitor_daemon.sh start <event_slug>
+#   ./run_ufc_monitor_daemon.sh start [all|<event_slug>]
 #   ./run_ufc_monitor_daemon.sh stop
 #   ./run_ufc_monitor_daemon.sh status
 #   ./run_ufc_monitor_daemon.sh logs
 #   ./run_ufc_monitor_daemon.sh attach
 #
 # Examples:
+#   ./run_ufc_monitor_daemon.sh start
+#   ./run_ufc_monitor_daemon.sh start all
 #   ./run_ufc_monitor_daemon.sh start ufc-jus3-pad-2026-01-24
 #   ./run_ufc_monitor_daemon.sh logs
 #   ./run_ufc_monitor_daemon.sh attach
@@ -47,7 +49,7 @@ echo "[INFO] Using $SESSION_CMD for session management"
 # ============================================================================
 
 start_monitor() {
-    local event_slug="${1:-ufc-jus3-pad-2026-01-24}"
+    local event_slug="${1:-all}"
 
     if [ -n "$2" ]; then
         echo "[WARN] Threshold arg ignored; set THRESHOLD in .env"
