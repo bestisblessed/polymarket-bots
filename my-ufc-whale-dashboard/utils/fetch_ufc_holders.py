@@ -24,7 +24,7 @@ LIMIT_EVENTS = 200
 LIMIT_HOLDERS = 50  # fetch more to have enough for per-side tables
 MIN_BALANCE = 10
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 
 def _parse_list(value):
