@@ -14,6 +14,7 @@ Example:
 
 References:
 - Gamma API (markets): https://docs.polymarket.com/api-reference/core/get-market
+- Data API (trades): https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
 - WebSocket Overview: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
 - Market Channel: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
 """
@@ -38,6 +39,7 @@ load_dotenv()
 # === API Endpoints ===
 GAMMA_API = "https://gamma-api.polymarket.com"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+DATA_API = "https://data-api.polymarket.com"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 PUSHOVER_TITLE = "UFC Whale Monitor 🥊"
 
@@ -49,7 +51,12 @@ HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
 HEALTHCHECK_INTERVAL = 300  # 5 minutes
 
 
-def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] = None) -> None:
+def send_pushover(
+    message: str,
+    url: Optional[str] = None,
+    title: Optional[str] = None,
+    url_title: Optional[str] = None,
+) -> None:
     """Send a Pushover notification."""
     token = os.environ.get("PUSHOVER_API_TOKEN")
     user = os.environ.get("PUSHOVER_GROUP_KEY")
@@ -60,7 +67,7 @@ def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] 
     data["title"] = title or PUSHOVER_TITLE
     if url:
         data["url"] = url
-        data["url_title"] = "View Market"
+        data["url_title"] = url_title or "View Market"
     try:
         resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=10)
         if resp.ok:
@@ -153,6 +160,74 @@ def derive_fight_label(event_title: Optional[str], markets: list) -> str:
         cleaned = cleaned.split(" - ", 1)[1].strip()
     return cleaned or "UFC Fight"
 
+
+def build_profile_url(address: str) -> Optional[str]:
+    if not address:
+        return None
+    return f"https://polymarket.com/profile/{address}"
+
+
+def normalize_timestamp_ms(value: Optional[int]) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed < 1_000_000_000_000:
+        return parsed * 1000
+    return parsed
+
+
+def fetch_recent_trade_profile(
+    *,
+    market_id: str,
+    asset_id: str,
+    side: str,
+    timestamp_ms: Optional[int],
+) -> Optional[dict]:
+    """
+    Fetch recent trade details from the public Data API to identify buyer profile.
+
+    Ref: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
+    """
+    if not market_id:
+        return None
+
+    params = {
+        "market": market_id,
+        "limit": 5,
+        "offset": 0,
+        "side": side,
+    }
+
+    try:
+        resp = requests.get(f"{DATA_API}/trades", params=params, timeout=15)
+        resp.raise_for_status()
+        trades = resp.json() or []
+    except Exception as e:
+        print(f"[WARN] Trade lookup failed: {e}")
+        return None
+
+    if not trades:
+        return None
+
+    normalized_ts = normalize_timestamp_ms(timestamp_ms)
+    matching = [t for t in trades if t.get("asset") == asset_id] or trades
+
+    if normalized_ts is None:
+        return matching[0] if matching else None
+
+    def _trade_delta(trade: dict) -> int:
+        trade_ts = normalize_timestamp_ms(trade.get("timestamp"))
+        if trade_ts is None:
+            return 10**18
+        return abs(trade_ts - normalized_ts)
+
+    closest = min(matching, key=_trade_delta, default=None)
+    if closest and _trade_delta(closest) <= 300_000:
+        return closest
+    return None
 
 def build_token_map_for_event(*, event_slug: str, event_title: Optional[str], markets: list) -> dict:
     """Build token map + token IDs for a single event."""
@@ -453,7 +528,6 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
 
     event_slug = market_info.get("event_slug", "unknown")
     event_title = market_info.get("event_title") or "UFC Event"
-    event_url = market_info.get("event_url") or ""
     # Fight label is already in the Event line; Market line should be the specific market only.
 
     log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
@@ -477,12 +551,25 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         else:
             market_display = market_title
 
+        trade_profile = fetch_recent_trade_profile(
+            market_id=data.get("market", ""),
+            asset_id=asset_id,
+            side=side,
+            timestamp_ms=timestamp_ms,
+        )
+        buyer_wallet = (trade_profile or {}).get("proxyWallet")
+        buyer_name = (trade_profile or {}).get("pseudonym") or (trade_profile or {}).get("name")
+        buyer_label = buyer_name or buyer_wallet
+        buyer_url = build_profile_url(buyer_wallet) if buyer_wallet else None
+
         msg_lines = [
             f"Event: {event_title}",
             format_labeled_wrapped("Market", market_display, width=84, hanging_indent=2),
             f"Bet: {outcome} @ {price:.0%}",
             f"Size: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({size:,.2f} Shares)",
         ]
+        if buyer_label:
+            msg_lines.append(f"Buyer: {buyer_label}")
 
         msg = "\n".join(msg_lines)
 
@@ -495,7 +582,12 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url)
+        send_pushover(
+            msg,
+            url=buyer_url,
+            url_title="View Account",
+            title=PUSHOVER_TITLE,
+        )
 
 
 def run_monitor(target: str, threshold: float):
@@ -669,6 +761,7 @@ def main():
     print()
     print("References:")
     print("- Gamma API: https://docs.polymarket.com/api-reference/core/get-market")
+    print("- Data API (trades): https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets")
     print("- WebSocket: https://docs.polymarket.com/developers/CLOB/websocket/market-channel")
     print()
     
