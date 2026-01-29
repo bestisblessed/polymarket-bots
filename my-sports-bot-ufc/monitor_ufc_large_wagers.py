@@ -49,6 +49,7 @@ LOG_DIR = "logs"
 # === Health Check Settings ===
 HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
 HEALTHCHECK_INTERVAL = 300  # 5 minutes
+WALLET_LOOKUP_ENABLED = os.environ.get("WALLET_LOOKUP_ENABLED", "true").lower() in {"1", "true", "yes"}
 
 
 def send_pushover(
@@ -548,9 +549,9 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
 
         trade_wallet_label = "Unknown"
         profile_url = None
-        if condition_id:
+        if WALLET_LOOKUP_ENABLED and condition_id:
             try:
-                trades = fetch_recent_trades(condition_id=condition_id)
+                trades = fetch_recent_trades(condition_id=condition_id, limit=10)
                 matched_trade = select_trade_for_alert(
                     trades,
                     asset_id=asset_id,

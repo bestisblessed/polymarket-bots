@@ -42,6 +42,12 @@ Set the whale alert threshold in `my-sports-bot-ufc/.env`:
 THRESHOLD=1000
 ```
 
+Optional: enable wallet lookup (uses Data API `trades` to find the buyer wallet for alerts).
+
+```bash
+WALLET_LOOKUP_ENABLED=true
+```
+
 ## Setup
 
 1. Copy `.env.example` to `.env`
@@ -84,6 +90,7 @@ cp .env.example .env
 ## Notes
 
 - Alerts rely on `last_trade_price` (executed trades). `price_change` is emitted when orders are placed or canceled, so it can create false whale alerts if used for detection. See the Market Channel docs for details: https://docs.polymarket.com/developers/CLOB/websocket/market-channel.md
+- The CLOB WebSocket payloads do not include wallet addresses, so wallet links require the Data API trade lookup (controlled by `WALLET_LOOKUP_ENABLED`).
 - Only BUY side triggers alerts (avoids duplicate notifications)
 - Supports both exact event slug and keyword search
 - Auto-reconnects on WebSocket disconnection
