@@ -111,3 +111,11 @@ One-off scripts in `utils/` for various Polymarket tasks
 	- Track selected wallets and mirror trades with caps and delays.
 	- Add safety checks for slippage, liquidity, and market limits.
 	- Uses: `PolymarketDataClient` for leaderboards/holders, `PolymarketClobClient` for mirroring trades.
+
+## Dashboards
+
+- **`my-ufc-whale-dashboard`** - UFC whale holders + all-trades stats.
+	- `utils/fetch_ufc_holders.py` outputs:
+		- `utils/data/ufc_holders_*.csv` (whales-only top holders snapshot)
+		- `utils/data/ufc_trade_stats_*.csv` (all-trades volume/tickets per outcome)
+	- `report_ufc_holders.py` loads both files to print whales-only and all-trades breakdowns.

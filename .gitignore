@@ -4,3 +4,4 @@
 data/
 testing/
 .playwright-mcp/
+__pycache__/

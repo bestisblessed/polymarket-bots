@@ -5,3 +5,4 @@ pytz
 polymarket-apis
 websocket-client
 py_clob_client
+tabulate
