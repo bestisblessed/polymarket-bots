@@ -14,6 +14,7 @@ Example:
 
 References:
 - Gamma API (markets): https://docs.polymarket.com/api-reference/core/get-market
+- Data API (trades): https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md
 - WebSocket Overview: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
 - Market Channel: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
 """
@@ -37,6 +38,7 @@ load_dotenv()
 
 # === API Endpoints ===
 GAMMA_API = "https://gamma-api.polymarket.com"
+DATA_API = "https://data-api.polymarket.com"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 PUSHOVER_TITLE = "UFC Whale Monitor 🥊"
@@ -47,9 +49,15 @@ LOG_DIR = "logs"
 # === Health Check Settings ===
 HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
 HEALTHCHECK_INTERVAL = 300  # 5 minutes
+WALLET_LOOKUP_ENABLED = os.environ.get("WALLET_LOOKUP_ENABLED", "true").lower() in {"1", "true", "yes"}
 
 
-def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] = None) -> None:
+def send_pushover(
+    message: str,
+    url: Optional[str] = None,
+    title: Optional[str] = None,
+    url_title: Optional[str] = None,
+) -> None:
     """Send a Pushover notification."""
     token = os.environ.get("PUSHOVER_API_TOKEN")
     user = os.environ.get("PUSHOVER_GROUP_KEY")
@@ -60,7 +68,7 @@ def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] 
     data["title"] = title or PUSHOVER_TITLE
     if url:
         data["url"] = url
-        data["url_title"] = "View Market"
+        data["url_title"] = url_title or "View Market"
     try:
         resp = requests.post(PUSHOVER_ENDPOINT, data=data, timeout=10)
         if resp.ok:
@@ -177,6 +185,7 @@ def build_token_map_for_event(*, event_slug: str, event_title: Optional[str], ma
 
         group_item_title = (market.get("groupItemTitle") or "").strip()
         sports_market_type = (market.get("sportsMarketType") or "").strip()
+        condition_id = market.get("conditionId")
 
         outcomes_raw = market.get("outcomes")
         tokens_raw = market.get("clobTokenIds")
@@ -224,6 +233,7 @@ def build_token_map_for_event(*, event_slug: str, event_title: Optional[str], ma
                 "market_type": market_type,
                 "group_item_title": group_item_title,
                 "sports_market_type": sports_market_type,
+                "condition_id": condition_id,
             }
             token_ids.append(token_id)
 
@@ -425,6 +435,66 @@ def fetch_ufc_fight_events(*, limit: int = 200) -> list:
     return fights
 
 
+def fetch_recent_trades(*, condition_id: str, limit: int = 50, offset: int = 0) -> list:
+    """
+    Fetch recent trades for a market condition ID using the Data API.
+
+    Docs: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md
+    """
+    params = {
+        "market": condition_id,
+        "limit": limit,
+        "offset": offset,
+        "takerOnly": True,
+    }
+    resp = requests.get(f"{DATA_API}/trades", params=params, timeout=30)
+    resp.raise_for_status()
+    return resp.json() or []
+
+
+def select_trade_for_alert(
+    trades: list,
+    *,
+    asset_id: str,
+    side: str,
+    price: float,
+    size: float,
+    timestamp_ms: Optional[int],
+) -> Optional[dict]:
+    """Pick the closest matching trade for the alert."""
+    candidates = [
+        trade
+        for trade in trades
+        if trade.get("asset") == asset_id and trade.get("side") == side
+    ]
+    if not candidates:
+        return None
+
+    target_ts = int(timestamp_ms) if timestamp_ms else 0
+
+    def _score(trade: dict) -> tuple:
+        trade_price = float(trade.get("price") or 0)
+        trade_size = float(trade.get("size") or 0)
+        trade_ts = int(trade.get("timestamp") or 0)
+        return (
+            abs(trade_price - price),
+            abs(trade_size - size),
+            abs(trade_ts - target_ts),
+        )
+
+    return sorted(candidates, key=_score)[0]
+
+
+def format_wallet_label(trade: Optional[dict]) -> tuple[str, Optional[str]]:
+    """Return display label and profile URL for a trade."""
+    if not trade:
+        return "Unknown", None
+    wallet = trade.get("proxyWallet")
+    display_name = trade.get("name") or trade.get("pseudonym") or wallet or "Unknown"
+    profile_url = f"https://polymarket.com/profile/{wallet}" if wallet else None
+    return display_name, profile_url
+
+
 def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> None:
     """
     Process a last_trade_price event and alert on large executed trades.
@@ -453,7 +523,7 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
 
     event_slug = market_info.get("event_slug", "unknown")
     event_title = market_info.get("event_title") or "UFC Event"
-    event_url = market_info.get("event_url") or ""
+    condition_id = market_info.get("condition_id")
     # Fight label is already in the Event line; Market line should be the specific market only.
 
     log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
@@ -477,11 +547,29 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         else:
             market_display = market_title
 
+        trade_wallet_label = "Unknown"
+        profile_url = None
+        if WALLET_LOOKUP_ENABLED and condition_id:
+            try:
+                trades = fetch_recent_trades(condition_id=condition_id, limit=10)
+                matched_trade = select_trade_for_alert(
+                    trades,
+                    asset_id=asset_id,
+                    side=side,
+                    price=price,
+                    size=size,
+                    timestamp_ms=timestamp_ms,
+                )
+                trade_wallet_label, profile_url = format_wallet_label(matched_trade)
+            except Exception as exc:
+                print(f"[WARN] Failed to fetch trade wallet: {exc}")
+
         msg_lines = [
             f"Event: {event_title}",
             format_labeled_wrapped("Market", market_display, width=84, hanging_indent=2),
             f"Bet: {outcome} @ {price:.0%}",
             f"Size: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({size:,.2f} Shares)",
+            f"Wallet: {trade_wallet_label}",
         ]
 
         msg = "\n".join(msg_lines)
@@ -495,7 +583,7 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url)
+        send_pushover(msg, profile_url, url_title="View Wallet")
 
 
 def run_monitor(target: str, threshold: float):
@@ -669,6 +757,7 @@ def main():
     print()
     print("References:")
     print("- Gamma API: https://docs.polymarket.com/api-reference/core/get-market")
+    print("- Data API: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md")
     print("- WebSocket: https://docs.polymarket.com/developers/CLOB/websocket/market-channel")
     print()
     
