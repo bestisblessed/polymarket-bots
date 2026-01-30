@@ -566,10 +566,22 @@ def run_monitor(target: str, threshold: float):
         print()
 
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
+        if not asset_ids:
+            return
+
+        first = True
+        chunks = 0
         for i in range(0, len(asset_ids), chunk_size):
             chunk = asset_ids[i : i + chunk_size]
-            ws_conn.send(json.dumps({"type": "market", "assets_ids": chunk}))
-        print(f"[INFO] Subscribed to {len(asset_ids)} asset IDs")
+            payload = {"assets_ids": chunk}
+            if first:
+                payload["type"] = "market"
+                first = False
+            else:
+                payload["operation"] = "subscribe"
+            ws_conn.send(json.dumps(payload))
+            chunks += 1
+        print(f"[INFO] Subscribed to {len(asset_ids)} asset IDs ({chunks} messages)")
 
     # === START HEALTH CHECK THREAD ===
     health_check_thread = None
@@ -612,6 +624,8 @@ def run_monitor(target: str, threshold: float):
                                     asset_id = item.get("asset_id", "")[:20]
                                     last_price = item.get("last_trade_price", "N/A")
                                     print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
+                                elif event_type == "last_trade_price":
+                                    process_last_trade_price(item, token_map, threshold)
                             continue
 
                         data = raw_data
