@@ -5,8 +5,8 @@
 
 set -e
 
-# Set safe PATH for cron environment
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# Set safe PATH for cron environment (include pyenv for Raspberry Pi)
+export PATH="$HOME/.pyenv/shims:$HOME/.pyenv/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # Logging
 LOG_FILE="$HOME/polymarket-bots/my-ufc-whale-dashboard/cron.log"
