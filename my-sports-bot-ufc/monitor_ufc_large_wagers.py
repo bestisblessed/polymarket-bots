@@ -569,16 +569,14 @@ def run_monitor(target: str, threshold: float):
         if not asset_ids:
             return
 
-        first = True
         chunks = 0
         for i in range(0, len(asset_ids), chunk_size):
             chunk = asset_ids[i : i + chunk_size]
-            payload = {"assets_ids": chunk}
-            if first:
-                payload["type"] = "market"
-                first = False
-            else:
-                payload["operation"] = "subscribe"
+            payload = {
+                "assets_ids": chunk,
+                "type": "market",
+                "operation": "subscribe",
+            }
             ws_conn.send(json.dumps(payload))
             chunks += 1
         print(f"[INFO] Subscribed to {len(asset_ids)} asset IDs ({chunks} messages)")
