@@ -26,8 +26,10 @@ import threading
 import time
 from datetime import datetime
 import textwrap
-from typing import Optional
+from typing import Any, Optional
 import re
+
+from json import JSONDecodeError
 
 import requests
 from dotenv import load_dotenv
@@ -46,7 +48,12 @@ LOG_DIR = "logs"
 
 # === Health Check Settings ===
 HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
-HEALTHCHECK_INTERVAL = 300  # 5 minutes
+#HEALTHCHECK_INTERVAL = 300  # 5 minutes
+HEALTHCHECK_INTERVAL = 900
+
+# === WebSocket Keepalive Settings ===
+# Per Polymarket WebSocket docs, send PING to keep connection alive and receiving events
+WS_PING_INTERVAL = 10  # seconds
 
 
 def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] = None) -> None:
@@ -113,6 +120,38 @@ def health_check_worker(url: str, interval: int, stop_event: threading.Event) ->
             send_health_ping(url)
 
     print("[INFO] Health check worker stopped")
+
+
+def websocket_ping_worker(ws_ref: list, interval: int, stop_event: threading.Event) -> None:
+    """
+    Background worker that sends periodic PING messages to keep the WebSocket alive.
+
+    Per Polymarket WebSocket documentation, sending PING keeps the connection
+    active and ensures continued delivery of all event types including last_trade_price.
+
+    Args:
+        ws_ref: A list containing a single WebSocket reference (allows updates on reconnect)
+        interval: Seconds between PING messages
+        stop_event: Threading event to signal shutdown
+    """
+    print(f"[INFO] WebSocket ping worker started (interval: {interval}s)")
+
+    while not stop_event.is_set():
+        # Sleep in 1-second increments to check stop_event frequently
+        for _ in range(interval):
+            if stop_event.is_set():
+                break
+            time.sleep(1)
+
+        ws = ws_ref[0]
+        if not stop_event.is_set() and ws is not None:
+            try:
+                ws.send("PING")
+            except Exception as e:
+                # Connection may be closed; reconnection logic will handle it
+                print(f"[WARN] WebSocket ping failed: {e}")
+
+    print("[INFO] WebSocket ping worker stopped")
 
 
 def format_usd(value: float, *, decimals: int = 2) -> str:
@@ -586,12 +625,26 @@ def run_monitor(target: str, threshold: float):
         health_check_thread.start()
     else:
         print("[INFO] Health check disabled (HEALTHCHECK_URL not set)")
+
+    # === START WEBSOCKET PING THREAD ===
+    # This keeps the WebSocket connection alive and ensures delivery of all events
+    # including last_trade_price (trade executions)
+    ws_ref: list[Any] = [None]  # Mutable reference to allow updates on reconnect
+    stop_ws_ping = threading.Event()
+    ws_ping_thread = threading.Thread(
+        target=websocket_ping_worker,
+        args=(ws_ref, WS_PING_INTERVAL, stop_ws_ping),
+        daemon=True
+    )
+    ws_ping_thread.start()
+    print(f"[INFO] WebSocket keepalive ping interval: {WS_PING_INTERVAL}s")
     print()
 
     try:
         while True:
             try:
                 ws = create_connection(WS_URL)
+                ws_ref[0] = ws  # Update reference for ping worker
                 print(f"[INFO] Connected to WebSocket: {WS_URL}")
 
                 # Subscribe to market channel for token IDs (chunked)
@@ -599,10 +652,35 @@ def run_monitor(target: str, threshold: float):
                 _subscribe_assets(ws, token_ids)
                 print("[INFO] Listening for trades...\n")
 
+                non_json_count = 0
+
                 while True:
                     try:
                         message = ws.recv()
-                        raw_data = json.loads(message)
+                        if message is None:
+                            continue
+
+                        if isinstance(message, bytes):
+                            try:
+                                message = message.decode("utf-8")
+                            except Exception:
+                                non_json_count += 1
+                                if non_json_count <= 3 or non_json_count % 100 == 0:
+                                    print("[WARN] Non-UTF8 WS message ignored")
+                                continue
+
+                        message = message.strip()
+                        if not message or message.upper() in {"PING", "PONG"}:
+                            continue
+
+                        try:
+                            raw_data = json.loads(message)
+                        except JSONDecodeError:
+                            non_json_count += 1
+                            if non_json_count <= 3 or non_json_count % 100 == 0:
+                                preview = message[:120]
+                                print(f"[WARN] Non-JSON WS message ignored: {preview!r}")
+                            continue
 
                         # Handle list response (initial book snapshots)
                         if isinstance(raw_data, list):
@@ -627,16 +705,21 @@ def run_monitor(target: str, threshold: float):
 
                     except WebSocketConnectionClosedException:
                         print("[WARN] WebSocket connection closed, reconnecting...")
+                        ws_ref[0] = None  # Clear reference for ping worker
                         break
 
             except Exception as e:
                 print(f"[ERROR] WebSocket error: {e}")
+                ws_ref[0] = None  # Clear reference for ping worker
 
             print("[INFO] Reconnecting in 5 seconds...")
             time.sleep(5)
 
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
+        stop_ws_ping.set()
+        if ws_ping_thread:
+            ws_ping_thread.join(timeout=2)
         if health_check_thread:
             stop_health_check.set()
             health_check_thread.join(timeout=2)
