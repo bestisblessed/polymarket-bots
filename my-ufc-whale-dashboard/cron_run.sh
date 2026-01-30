@@ -23,6 +23,7 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
   # Navigate to Streamlit repo and commit/push if changes exist
   cd "$HOME/mma-ai/Streamlit"
+  git pull
 
   # Check if there are any changes in data/whale_data
   if git status --porcelain | grep -q "data/whale_data"; then
