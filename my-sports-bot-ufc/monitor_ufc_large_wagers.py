@@ -140,9 +140,10 @@ def websocket_ping_worker(ws_ref: list, interval: int, stop_event: threading.Eve
                 break
             time.sleep(1)
 
-        if not stop_event.is_set() and ws_ref[0] is not None:
+        ws = ws_ref[0]
+        if not stop_event.is_set() and ws is not None:
             try:
-                ws_ref[0].send("PING")
+                ws.send("PING")
             except Exception as e:
                 # Connection may be closed; reconnection logic will handle it
                 print(f"[WARN] WebSocket ping failed: {e}")
