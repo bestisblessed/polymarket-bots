@@ -88,6 +88,11 @@ One-off scripts in `utils/` for various Polymarket tasks
 	- Calls the Polymarket Data API activity endpoint for the AltCreamster wallet.
 	- Run via `bash my-creamster-monitor-bot/run.sh` with local `.env` credentials.
 
+- **`my-ufc-whale-dashboard`** - UFC whale dashboard data pipeline for Streamlit.
+	- Fetches live volume, BUY-side ticket counts, and top holders for active UFC markets.
+	- Outputs `data/all_ufc_volumes.json`, `data/all_ufc_ticket_counts.json`, and `data/ufc_holders_*_pnl.csv`.
+	- Run via `bash my-ufc-whale-dashboard/run.sh`.
+
 ## Bots (Development & Hypothetical)
 
 - **Market screener bot** - Discover new opportunities quickly.
