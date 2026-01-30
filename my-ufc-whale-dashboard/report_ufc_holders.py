@@ -155,7 +155,7 @@ def compute_pnls(df: pd.DataFrame) -> pd.DataFrame:
         ufc_pnl_map[w] = get_user_ufc_pnl(w)
         if idx % 10 == 0:
             print(f"  Fetched P&L for {idx}/{len(wallets)} wallets...")
-        time.sleep(0.05)
+        time.sleep(0.025)
     df['account_pnl'] = df['wallet'].map(pnl_map)
     df['ufc_pnl'] = df['wallet'].map(ufc_pnl_map)
     return df
