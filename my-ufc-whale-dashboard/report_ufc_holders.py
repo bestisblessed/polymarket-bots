@@ -322,13 +322,7 @@ def main():
     print_top_20_by_pnl(df, "ufc_pnl", "TOP 20 BY UFC P&L (WALLETS)")
     print_top_20_by_pnl(df, "account_pnl", "TOP 20 BY ACCOUNT P&L (WALLETS)")
     print_moneyline(df)
-
-    try:
-        choice = input("\nPrint non-moneyline (props/totals) markets as well? [y/N]: ").strip().lower()
-        if choice in ("y", "yes"):
-            print_props(df)
-    except EOFError:
-        pass
+    print_props(df)
 
     print("\n" + "=" * 90)
     print("END OF REPORT")
