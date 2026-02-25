@@ -20,6 +20,7 @@ while True:
     }
     resp = requests.get("https://gamma-api.polymarket.com/markets", params=params)
     batch = resp.json()
+    print(f"Fetched {len(batch)} markets (offset={offset})")
     if not batch:
         break
     for m in batch:
