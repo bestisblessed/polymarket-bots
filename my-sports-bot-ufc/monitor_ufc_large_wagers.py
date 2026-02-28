@@ -26,14 +26,14 @@ import threading
 import time
 from datetime import datetime
 import textwrap
-from typing import Any, Optional
+from typing import Optional
 import re
 
 from json import JSONDecodeError
 
 import requests
 from dotenv import load_dotenv
-from websocket import create_connection, WebSocketConnectionClosedException
+import websocket
 
 load_dotenv()
 
@@ -52,8 +52,13 @@ HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
 HEALTHCHECK_INTERVAL = 900
 
 # === WebSocket Keepalive Settings ===
-# Per Polymarket WebSocket docs, send PING to keep connection alive and receiving events
-WS_PING_INTERVAL = 10  # seconds
+# Protocol-level ping frames detect dead connections (half-open TCP)
+WS_PING_INTERVAL = 30   # seconds between ping frames
+WS_PING_TIMEOUT = 10    # seconds to wait for pong before declaring dead
+
+# Health check stale threshold: if no WS message received in this many seconds,
+# send a /fail ping to healthchecks.io instead of a success ping
+HEALTHCHECK_STALE_THRESHOLD = 300  # 5 minutes
 
 
 def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] = None) -> None:
@@ -97,12 +102,18 @@ def send_health_ping(url: str) -> None:
         print(f"[WARN] Health check ping error (non-fatal): {e}")
 
 
-def health_check_worker(url: str, interval: int, stop_event: threading.Event) -> None:
+def health_check_worker(
+    url: str,
+    interval: int,
+    stop_event: threading.Event,
+    last_message_time: list,
+) -> None:
     """
     Background worker that sends periodic health check pings.
 
-    Runs in a daemon thread and exits gracefully when stop_event is set.
-    Uses time.sleep() with checking stop_event to allow quick shutdown.
+    Only sends a success ping if the WebSocket has received a message recently
+    (within HEALTHCHECK_STALE_THRESHOLD seconds). Otherwise sends a /fail ping
+    so healthchecks.io triggers an alert.
     """
     print(f"[INFO] Health check worker started (interval: {interval}s)")
 
@@ -110,48 +121,21 @@ def health_check_worker(url: str, interval: int, stop_event: threading.Event) ->
     send_health_ping(url)
 
     while not stop_event.is_set():
-        # Sleep in 1-second increments to check stop_event frequently
         for _ in range(interval):
             if stop_event.is_set():
                 break
             time.sleep(1)
 
         if not stop_event.is_set():
-            send_health_ping(url)
+            elapsed = time.time() - last_message_time[0]
+            if elapsed > HEALTHCHECK_STALE_THRESHOLD:
+                print(f"[WARN] No WS message for {elapsed:.0f}s — sending /fail health ping")
+                send_health_ping(f"{url}/fail")
+            else:
+                send_health_ping(url)
 
     print("[INFO] Health check worker stopped")
 
-
-def websocket_ping_worker(ws_ref: list, interval: int, stop_event: threading.Event) -> None:
-    """
-    Background worker that sends periodic PING messages to keep the WebSocket alive.
-
-    Per Polymarket WebSocket documentation, sending PING keeps the connection
-    active and ensures continued delivery of all event types including last_trade_price.
-
-    Args:
-        ws_ref: A list containing a single WebSocket reference (allows updates on reconnect)
-        interval: Seconds between PING messages
-        stop_event: Threading event to signal shutdown
-    """
-    print(f"[INFO] WebSocket ping worker started (interval: {interval}s)")
-
-    while not stop_event.is_set():
-        # Sleep in 1-second increments to check stop_event frequently
-        for _ in range(interval):
-            if stop_event.is_set():
-                break
-            time.sleep(1)
-
-        ws = ws_ref[0]
-        if not stop_event.is_set() and ws is not None:
-            try:
-                ws.send("PING")
-            except Exception as e:
-                # Connection may be closed; reconnection logic will handle it
-                print(f"[WARN] WebSocket ping failed: {e}")
-
-    print("[INFO] WebSocket ping worker stopped")
 
 
 def format_usd(value: float, *, decimals: int = 2) -> str:
@@ -584,6 +568,8 @@ def run_monitor(target: str, threshold: float):
         print("[ERROR] No token IDs found to monitor")
         sys.exit(1)
 
+    # Print startup info for single-event mode
+    if (target or "").lower() != "all":
         log_file = os.path.join(LOG_DIR, f"ufc_{event_info['event_slug']}.log")
 
         print()
@@ -604,11 +590,83 @@ def run_monitor(target: str, threshold: float):
                 print(f"  - {market_title}")
         print()
 
+    # Shared state for health check: tracks when last WS message was received
+    last_message_time = [time.time()]
+    non_json_count = [0]
+
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
         for i in range(0, len(asset_ids), chunk_size):
             chunk = asset_ids[i : i + chunk_size]
             ws_conn.send(json.dumps({"type": "market", "assets_ids": chunk}))
         print(f"[INFO] Subscribed to {len(asset_ids)} asset IDs")
+
+    # === WebSocketApp callbacks ===
+
+    def on_open(wsapp):
+        print(f"[INFO] Connected to WebSocket: {WS_URL}")
+        _subscribe_assets(wsapp, token_ids)
+        print("[INFO] Listening for trades...\n")
+
+    def on_message(wsapp, message):
+        last_message_time[0] = time.time()
+
+        if message is None:
+            return
+
+        if isinstance(message, bytes):
+            try:
+                message = message.decode("utf-8")
+            except Exception:
+                non_json_count[0] += 1
+                if non_json_count[0] <= 3 or non_json_count[0] % 100 == 0:
+                    print("[WARN] Non-UTF8 WS message ignored")
+                return
+
+        message = message.strip()
+        if not message or message.upper() in {"PING", "PONG"}:
+            return
+
+        try:
+            raw_data = json.loads(message)
+        except JSONDecodeError:
+            non_json_count[0] += 1
+            if non_json_count[0] <= 3 or non_json_count[0] % 100 == 0:
+                preview = message[:120]
+                print(f"[WARN] Non-JSON WS message ignored: {preview!r}")
+            return
+
+        # Handle list response (initial book snapshots)
+        if isinstance(raw_data, list):
+            for item in raw_data:
+                event_type = item.get("event_type")
+                if event_type == "book":
+                    asset_id = item.get("asset_id", "")[:20]
+                    last_price = item.get("last_trade_price", "N/A")
+                    print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
+            return
+
+        data = raw_data
+        event_type = data.get("event_type")
+
+        if event_type == "book":
+            asset_id = data.get("asset_id", "")[:20]
+            last_price = data.get("last_trade_price", "N/A")
+            print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
+
+        elif event_type == "last_trade_price":
+            process_last_trade_price(data, token_map, threshold)
+
+    def on_error(wsapp, error):
+        print(f"[ERROR] WebSocket error: {error}")
+
+    def on_close(wsapp, close_status_code, close_msg):
+        print(f"[WARN] WebSocket closed (code={close_status_code}, msg={close_msg})")
+
+    def on_ping(wsapp, message):
+        pass  # Library auto-sends pong
+
+    def on_pong(wsapp, message):
+        pass  # Confirms connection is alive
 
     # === START HEALTH CHECK THREAD ===
     health_check_thread = None
@@ -617,113 +675,46 @@ def run_monitor(target: str, threshold: float):
     if HEALTHCHECK_URL:
         print(f"[INFO] Starting health check pings to: {HEALTHCHECK_URL}")
         print(f"[INFO] Health check interval: {HEALTHCHECK_INTERVAL}s")
+        print(f"[INFO] Stale threshold: {HEALTHCHECK_STALE_THRESHOLD}s (sends /fail if no WS data)")
         health_check_thread = threading.Thread(
             target=health_check_worker,
-            args=(HEALTHCHECK_URL, HEALTHCHECK_INTERVAL, stop_health_check),
-            daemon=True
+            args=(HEALTHCHECK_URL, HEALTHCHECK_INTERVAL, stop_health_check, last_message_time),
+            daemon=True,
         )
         health_check_thread.start()
     else:
         print("[INFO] Health check disabled (HEALTHCHECK_URL not set)")
 
-    # === START WEBSOCKET PING THREAD ===
-    # This keeps the WebSocket connection alive and ensures delivery of all events
-    # including last_trade_price (trade executions)
-    ws_ref: list[Any] = [None]  # Mutable reference to allow updates on reconnect
-    stop_ws_ping = threading.Event()
-    ws_ping_thread = threading.Thread(
-        target=websocket_ping_worker,
-        args=(ws_ref, WS_PING_INTERVAL, stop_ws_ping),
-        daemon=True
-    )
-    ws_ping_thread.start()
-    print(f"[INFO] WebSocket keepalive ping interval: {WS_PING_INTERVAL}s")
+    print(f"[INFO] WebSocket ping interval: {WS_PING_INTERVAL}s (protocol-level)")
+    print(f"[INFO] WebSocket ping timeout: {WS_PING_TIMEOUT}s")
+    print(f"[INFO] Auto-reconnect: 5s delay")
     print()
+
+    # === RUN WebSocketApp with auto-reconnect and protocol-level pings ===
+    wsapp = websocket.WebSocketApp(
+        WS_URL,
+        on_open=on_open,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+        on_ping=on_ping,
+        on_pong=on_pong,
+    )
 
     try:
         while True:
-            try:
-                ws = create_connection(WS_URL)
-                ws_ref[0] = ws  # Update reference for ping worker
-                print(f"[INFO] Connected to WebSocket: {WS_URL}")
-
-                # Subscribe to market channel for token IDs (chunked)
-                # Ref: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
-                _subscribe_assets(ws, token_ids)
-                print("[INFO] Listening for trades...\n")
-
-                non_json_count = 0
-
-                while True:
-                    try:
-                        message = ws.recv()
-                        if message is None:
-                            continue
-
-                        if isinstance(message, bytes):
-                            try:
-                                message = message.decode("utf-8")
-                            except Exception:
-                                non_json_count += 1
-                                if non_json_count <= 3 or non_json_count % 100 == 0:
-                                    print("[WARN] Non-UTF8 WS message ignored")
-                                continue
-
-                        message = message.strip()
-                        if not message or message.upper() in {"PING", "PONG"}:
-                            continue
-
-                        try:
-                            raw_data = json.loads(message)
-                        except JSONDecodeError:
-                            non_json_count += 1
-                            if non_json_count <= 3 or non_json_count % 100 == 0:
-                                preview = message[:120]
-                                print(f"[WARN] Non-JSON WS message ignored: {preview!r}")
-                            continue
-
-                        # Handle list response (initial book snapshots)
-                        if isinstance(raw_data, list):
-                            for item in raw_data:
-                                event_type = item.get("event_type")
-                                if event_type == "book":
-                                    asset_id = item.get("asset_id", "")[:20]
-                                    last_price = item.get("last_trade_price", "N/A")
-                                    print(f"[INFO] Book snapshot: {asset_id}... last_price={last_price}")
-                            continue
-
-                        data = raw_data
-                        event_type = data.get("event_type")
-
-                        if event_type == "book":
-                            asset_id = data.get("asset_id", "")[:20]
-                            last_price = data.get("last_trade_price", "N/A")
-                            print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
-
-                        elif event_type == "last_trade_price":
-                            process_last_trade_price(data, token_map, threshold)
-
-                    except WebSocketConnectionClosedException:
-                        print("[WARN] WebSocket connection closed, reconnecting...")
-                        ws_ref[0] = None  # Clear reference for ping worker
-                        break
-
-            except Exception as e:
-                print(f"[ERROR] WebSocket error: {e}")
-                ws_ref[0] = None  # Clear reference for ping worker
-
+            wsapp.run_forever(
+                ping_interval=WS_PING_INTERVAL,
+                ping_timeout=WS_PING_TIMEOUT,
+            )
             print("[INFO] Reconnecting in 5 seconds...")
             time.sleep(5)
-
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
-        stop_ws_ping.set()
-        if ws_ping_thread:
-            ws_ping_thread.join(timeout=2)
+    finally:
         if health_check_thread:
             stop_health_check.set()
             health_check_thread.join(timeout=2)
-        sys.exit(0)
 
 
 def main():

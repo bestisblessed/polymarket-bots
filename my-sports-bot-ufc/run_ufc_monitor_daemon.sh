@@ -21,7 +21,8 @@
 
 set -e
 
-sleep 60
+# Wait for network to be ready after boot
+sleep 30
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -78,10 +79,15 @@ start_monitor() {
 
     export PYTHONUNBUFFERED=1
 
+    # Watchdog wrapper: auto-restarts the Python process if it exits (crash, OOM, etc.)
+    # Output is timestamped on screen; only important lines + 1 heartbeat/min go to console.log
+    CONSOLE_LOG="$SCRIPT_DIR/logs/console.log"
+    WATCHDOG_CMD="cd '$SCRIPT_DIR' && mkdir -p logs && while true; do echo '[WATCHDOG] Starting monitor...'; python3 monitor_ufc_large_wagers.py '$event_slug'; EXIT_CODE=\$?; echo \"[WATCHDOG] Monitor exited (code=\$EXIT_CODE). Restarting in 10s...\"; sleep 10; done 2>&1 | awk -v logfile='$CONSOLE_LOG' 'BEGIN{last=0} { ts=strftime(\"[%Y-%m-%d %H:%M:%S]\"); print ts, \$0; fflush(); if (\$0 ~ /ALERT|ERROR|WARN|WATCHDOG/) { print ts, \$0 >> logfile; fflush(logfile) } else { now=systime(); if (now-last>=60) { print ts, \$0 >> logfile; fflush(logfile); last=now } } }'"
+
     if [ "$SESSION_CMD" = "screen" ]; then
-        screen -dmS "$SESSION_NAME" bash -c "cd '$SCRIPT_DIR' && python3 monitor_ufc_large_wagers.py '$event_slug'"
+        screen -dmS "$SESSION_NAME" bash -c "$WATCHDOG_CMD"
     else  # tmux
-        tmux new-session -d -s "$SESSION_NAME" -c "$SCRIPT_DIR" "python3 monitor_ufc_large_wagers.py '$event_slug'"
+        tmux new-session -d -s "$SESSION_NAME" -c "$SCRIPT_DIR" "bash -c \"$WATCHDOG_CMD\""
     fi
 
     sleep 1
