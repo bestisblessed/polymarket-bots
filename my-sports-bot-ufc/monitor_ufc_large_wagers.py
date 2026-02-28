@@ -590,9 +590,11 @@ def run_monitor(target: str, threshold: float):
                 print(f"  - {market_title}")
         print()
 
-    # Shared state for health check: tracks when last WS message was received
+    # Shared state for health check and heartbeat
     last_message_time = [time.time()]
+    last_heartbeat_time = [time.time()]
     non_json_count = [0]
+    HEARTBEAT_INTERVAL = 300  # 5 minutes
 
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
         for i in range(0, len(asset_ids), chunk_size):
@@ -608,7 +610,13 @@ def run_monitor(target: str, threshold: float):
         print("[INFO] Listening for trades...\n")
 
     def on_message(wsapp, message):
-        last_message_time[0] = time.time()
+        now = time.time()
+        last_message_time[0] = now
+
+        # Periodic heartbeat so you can tell it's alive during quiet periods
+        if now - last_heartbeat_time[0] >= HEARTBEAT_INTERVAL:
+            last_heartbeat_time[0] = now
+            print(f"[INFO] Heartbeat: connection alive, {len(token_ids)} tokens monitored")
 
         if message is None:
             return
