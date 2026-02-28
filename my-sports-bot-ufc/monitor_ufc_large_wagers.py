@@ -138,6 +138,28 @@ def health_check_worker(
 
 
 
+def heartbeat_worker(
+    interval: int,
+    stop_event: threading.Event,
+    last_message_time: list,
+    token_count: int,
+) -> None:
+    """Print a heartbeat every `interval` seconds so you can tell it's alive during quiet markets."""
+    while not stop_event.is_set():
+        for _ in range(interval):
+            if stop_event.is_set():
+                break
+            time.sleep(1)
+
+        if not stop_event.is_set():
+            elapsed = time.time() - last_message_time[0]
+            if elapsed < 60:
+                ago = f"{elapsed:.0f}s ago"
+            else:
+                ago = f"{elapsed / 60:.0f}m ago"
+            print(f"[INFO] Heartbeat: alive, last WS msg {ago}, {token_count} tokens monitored")
+
+
 def format_usd(value: float, *, decimals: int = 2) -> str:
     """Format USD value with commas and fixed decimals."""
     return f"${value:,.{decimals}f}"
@@ -592,9 +614,7 @@ def run_monitor(target: str, threshold: float):
 
     # Shared state for health check and heartbeat
     last_message_time = [time.time()]
-    last_heartbeat_time = [time.time()]
     non_json_count = [0]
-    HEARTBEAT_INTERVAL = 300  # 5 minutes
 
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
         for i in range(0, len(asset_ids), chunk_size):
@@ -610,13 +630,7 @@ def run_monitor(target: str, threshold: float):
         print("[INFO] Listening for trades...\n")
 
     def on_message(wsapp, message):
-        now = time.time()
-        last_message_time[0] = now
-
-        # Periodic heartbeat so you can tell it's alive during quiet periods
-        if now - last_heartbeat_time[0] >= HEARTBEAT_INTERVAL:
-            last_heartbeat_time[0] = now
-            print(f"[INFO] Heartbeat: connection alive, {len(token_ids)} tokens monitored")
+        last_message_time[0] = time.time()
 
         if message is None:
             return
@@ -693,8 +707,18 @@ def run_monitor(target: str, threshold: float):
     else:
         print("[INFO] Health check disabled (HEALTHCHECK_URL not set)")
 
+    # === START HEARTBEAT THREAD ===
+    stop_heartbeat = threading.Event()
+    hb_thread = threading.Thread(
+        target=heartbeat_worker,
+        args=(300, stop_heartbeat, last_message_time, len(token_ids)),
+        daemon=True,
+    )
+    hb_thread.start()
+
     print(f"[INFO] WebSocket ping interval: {WS_PING_INTERVAL}s (protocol-level)")
     print(f"[INFO] WebSocket ping timeout: {WS_PING_TIMEOUT}s")
+    print(f"[INFO] Heartbeat interval: 300s")
     print(f"[INFO] Auto-reconnect: 5s delay")
     print()
 
@@ -720,6 +744,7 @@ def run_monitor(target: str, threshold: float):
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
     finally:
+        stop_heartbeat.set()
         if health_check_thread:
             stop_health_check.set()
             health_check_thread.join(timeout=2)

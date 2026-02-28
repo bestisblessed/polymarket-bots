@@ -82,7 +82,7 @@ start_monitor() {
     # Watchdog wrapper: auto-restarts the Python process if it exits (crash, OOM, etc.)
     # Output is timestamped on screen; only important lines + 1 heartbeat/min go to console.log
     CONSOLE_LOG="$SCRIPT_DIR/logs/console.log"
-    WATCHDOG_CMD="cd '$SCRIPT_DIR' && mkdir -p logs && while true; do echo '[WATCHDOG] Starting monitor...'; python3 monitor_ufc_large_wagers.py '$event_slug'; EXIT_CODE=\$?; echo \"[WATCHDOG] Monitor exited (code=\$EXIT_CODE). Restarting in 10s...\"; sleep 10; done 2>&1 | awk -v logfile='$CONSOLE_LOG' 'BEGIN{last=0} { ts=strftime(\"[%Y-%m-%d %H:%M:%S]\"); print ts, \$0; fflush(); if (\$0 ~ /ALERT|ERROR|WARN|WATCHDOG/) { print ts, \$0 >> logfile; fflush(logfile) } else { now=systime(); if (now-last>=60) { print ts, \$0 >> logfile; fflush(logfile); last=now } } }'"
+    WATCHDOG_CMD="cd '$SCRIPT_DIR' && mkdir -p logs && while true; do echo '[WATCHDOG] Starting monitor...'; python3 monitor_ufc_large_wagers.py '$event_slug'; EXIT_CODE=\$?; echo \"[WATCHDOG] Monitor exited (code=\$EXIT_CODE). Restarting in 10s...\"; sleep 10; done 2>&1 | awk -v logfile='$CONSOLE_LOG' 'BEGIN{last=0} { ts=strftime(\"[%Y-%m-%d %H:%M:%S]\"); print ts, \$0; fflush(); if (\$0 ~ /ALERT|ERROR|WARN|WATCHDOG|Heartbeat|Health check/) { print ts, \$0 >> logfile; fflush(logfile) } else { now=systime(); if (now-last>=60) { print ts, \$0 >> logfile; fflush(logfile); last=now } } }'"
 
     if [ "$SESSION_CMD" = "screen" ]; then
         screen -dmS "$SESSION_NAME" bash -c "$WATCHDOG_CMD"
