@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 # UFC Whale Dashboard - Fetch holders data for all UFC fights
 # Cron: */30 * * * * /Users/td/Code/polymarket-bots/my-ufc-whale-dashboard/run.sh
 
