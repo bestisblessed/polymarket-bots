@@ -9,6 +9,7 @@ This bot uses the most efficient approach for whale detection:
 1. **Market Discovery** (Gamma API) - Fetches all markets for a UFC event
 2. **Real-time Monitoring** (CLOB WebSocket) - Subscribes to `last_trade_price` events to detect executed trades
 3. **Alert System** (Pushover) - Sends notifications when trades exceed USD threshold
+4. **Buyer Lookup** (Data API) - Looks up recent trades to link to the buyer profile
 
 ### Why WebSocket over Polling?
 
@@ -56,6 +57,7 @@ cp .env.example .env
 ## API References
 
 - **Gamma API (markets)**: https://docs.polymarket.com/api-reference/core/get-market
+- **Data API (trades)**: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
 - **WebSocket Overview**: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
 - **Market Channel**: https://docs.polymarket.com/developers/CLOB/websocket/market-channel
 
@@ -70,13 +72,14 @@ cp .env.example .env
    - `size`: Number of shares traded
    - `price`: Trade price (0-1)
    - `side`: BUY or SELL
-6. Calculates USD value (`size * price`) and alerts if above threshold
+6. Looks up recent trades for the market via the Data API to identify the buyer's profile
+7. Calculates USD value (`size * price`) and alerts if above threshold
 
 ## Output
 
 - Console logs all activity
 - Saves all trades to `logs/ufc_<event_slug>.log`
-- Sends Pushover notification for large wagers
+- Sends Pushover notification for large wagers, linking to the buyer profile when available
 
 ## Notes
 
@@ -84,3 +87,4 @@ cp .env.example .env
 - Only BUY side triggers alerts (avoids duplicate notifications)
 - Supports both exact event slug and keyword search
 - Auto-reconnects on WebSocket disconnection
+- Buyer profiles are resolved via the public trades Data API using the market condition ID. Some trades may not resolve if the most recent trade lookup does not match the event.
