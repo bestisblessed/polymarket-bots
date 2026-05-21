@@ -21,15 +21,13 @@
 
 set -e
 
-# Wait for network to be ready after boot
-sleep 30
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Session name for screen/tmux
 SESSION_NAME="ufc-monitor"
 LOG_DIR="logs"
+STARTUP_NETWORK_WAIT_SECONDS="${STARTUP_NETWORK_WAIT_SECONDS:-30}"
 
 # Check which session manager is available (prefer screen)
 if command -v screen &> /dev/null; then
@@ -67,6 +65,11 @@ start_monitor() {
         echo "ERROR: Monitor already running in session '$SESSION_NAME'"
         echo "Run '$0 stop' to stop it first, or '$0 attach' to view it"
         exit 1
+    fi
+
+    if [ "$STARTUP_NETWORK_WAIT_SECONDS" -gt 0 ]; then
+        echo "[INFO] Waiting ${STARTUP_NETWORK_WAIT_SECONDS}s for network readiness before start..."
+        sleep "$STARTUP_NETWORK_WAIT_SECONDS"
     fi
 
     mkdir -p "$LOG_DIR"
