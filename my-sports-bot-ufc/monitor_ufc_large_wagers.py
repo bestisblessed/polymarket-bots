@@ -107,10 +107,12 @@ def build_x_alert_tweet(
             [
                 "🚨🐳  UFC Whale Alert  🚨🐳",
                 "",
-                f"Event: {event_title}",
-                f"Market: {market_display}",
-                f"Bet: {outcome} @ {price:.0%}",
-                f"Size: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} Shares)",
+                f"🥊 {event_title}",
+                f"🎯 Market: {market_display}",
+                f"📈 Bet: {outcome} @ {price:.0%}",
+                f"💵 Risk: {format_usd(usd_value)}",
+                f"🏆 To Win: {format_usd(potential_profit)}",
+                f"📊 Shares: {shares:,.2f}",
             ]
         )
     )
