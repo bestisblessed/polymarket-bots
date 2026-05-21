@@ -30,6 +30,7 @@ cd "$SCRIPT_DIR"
 SESSION_NAME="ufc-monitor"
 LOG_DIR="logs"
 STARTUP_NETWORK_WAIT_SECONDS="${STARTUP_NETWORK_WAIT_SECONDS:-30}"
+RESTART_NETWORK_WAIT_SECONDS="${RESTART_NETWORK_WAIT_SECONDS:-10}"
 
 # Check which session manager is available (prefer screen)
 if command -v screen &> /dev/null; then
@@ -157,6 +158,7 @@ restart_monitor() {
         echo "[INFO] Monitor is not running; starting a new session"
     fi
 
+    STARTUP_NETWORK_WAIT_SECONDS="$RESTART_NETWORK_WAIT_SECONDS"
     start_monitor "$event_slug" "$2"
 }
 
