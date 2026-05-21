@@ -43,6 +43,8 @@ Daemon commands:
 ./run_ufc_monitor_daemon.sh stop
 ```
 
+`start` waits 30 seconds by default for network readiness. `restart` waits 10 seconds by default.
+
 ## Threshold
 
 Set the whale alert threshold in `my-sports-bot-ufc/.env`:
