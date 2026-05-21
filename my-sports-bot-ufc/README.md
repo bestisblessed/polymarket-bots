@@ -8,7 +8,7 @@ This bot uses the most efficient approach for whale detection:
 
 1. **Market Discovery** (Gamma API) - Fetches all markets for a UFC event
 2. **Real-time Monitoring** (CLOB WebSocket) - Subscribes to `last_trade_price` events to detect executed trades
-3. **Alert System** (Pushover) - Sends notifications when trades exceed USD threshold
+3. **Alert System** (Pushover + X) - Sends notifications and text-only X posts when trades exceed USD threshold
 
 ### Why WebSocket over Polling?
 
@@ -44,13 +44,22 @@ THRESHOLD=1000
 ## Setup
 
 1. Copy `.env.example` to `.env`
-2. Add your Pushover credentials
+2. Add your Pushover credentials and X OAuth 1.0a credentials
 3. Run the bot
 
 ```bash
 cp .env.example .env
-# Edit .env with your Pushover credentials
+# Edit .env with your Pushover and X credentials
 ./run_ufc_monitor.sh <event_slug>
+```
+
+Required X posting values:
+
+```bash
+X_API_KEY=...
+X_API_SECRET=...
+X_ACCESS_TOKEN=...
+X_ACCESS_TOKEN_SECRET=...
 ```
 
 ## API References
@@ -77,10 +86,14 @@ cp .env.example .env
 - Console logs all activity
 - Saves all trades to `logs/ufc_<event_slug>.log`
 - Sends Pushover notification for large wagers
+- Posts a short text-only X alert through official OAuth 1.0a user context using `POST /2/tweets`
+- Skips X posts when the bet price is already displayed as 100%, while still sending the Pushover alert
 
 ## Notes
 
 - Alerts rely on `last_trade_price` (executed trades). `price_change` is emitted when orders are placed or canceled, so it can create false whale alerts if used for detection. See the Market Channel docs for details: https://docs.polymarket.com/developers/CLOB/websocket/market-channel.md
 - Only BUY side triggers alerts (avoids duplicate notifications)
+- X alert format mirrors the Pushover details with a flashier title line: `🐳  UFC Whale Alert 🐳`
+- X posting failures are logged and do not stop Pushover alerts or the monitor loop
 - Supports both exact event slug and keyword search
 - Auto-reconnects on WebSocket disconnection

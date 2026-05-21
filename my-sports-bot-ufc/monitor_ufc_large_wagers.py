@@ -33,6 +33,7 @@ from json import JSONDecodeError
 
 import requests
 from dotenv import load_dotenv
+from requests_oauthlib import OAuth1
 import websocket
 
 load_dotenv()
@@ -42,6 +43,7 @@ GAMMA_API = "https://gamma-api.polymarket.com"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 PUSHOVER_TITLE = "UFC Whale Monitor 🥊"
+X_POST_ENDPOINT = "https://api.x.com/2/tweets"
 
 # === Default Settings ===
 LOG_DIR = "logs"
@@ -81,6 +83,79 @@ def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] 
             print(f"[WARN] Pushover failed: {resp.status_code}")
     except Exception as e:
         print(f"[ERROR] Pushover error: {e}")
+
+
+def clamp_tweet_text(text: str) -> str:
+    """Keep the post inside X's 280 character limit."""
+    if len(text) <= 280:
+        return text
+    return text[:277].rstrip() + "..."
+
+
+def build_x_alert_tweet(
+    event_title: str,
+    market_display: str,
+    outcome: str,
+    price: float,
+    usd_value: float,
+    potential_profit: float,
+    shares: float,
+) -> str:
+    """Build the short public X alert text."""
+    return clamp_tweet_text(
+        "\n".join(
+            [
+                "🐳  UFC Whale Alert 🐳",
+                "",
+                f"Event: {event_title}",
+                f"Market: {market_display}",
+                f"Bet: {outcome} @ {price:.0%}",
+                f"Size: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} Shares)",
+            ]
+        )
+    )
+
+
+def send_x_tweet(text: str) -> None:
+    """Post a text-only X tweet with OAuth 1.0a user context."""
+    required = [
+        "X_API_KEY",
+        "X_API_SECRET",
+        "X_ACCESS_TOKEN",
+        "X_ACCESS_TOKEN_SECRET",
+    ]
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        print(f"[WARN] X credentials missing ({', '.join(missing)}), skipping tweet")
+        return
+
+    auth = OAuth1(
+        os.environ["X_API_KEY"],
+        os.environ["X_API_SECRET"],
+        os.environ["X_ACCESS_TOKEN"],
+        os.environ["X_ACCESS_TOKEN_SECRET"],
+    )
+
+    try:
+        resp = requests.post(
+            X_POST_ENDPOINT,
+            auth=auth,
+            json={"text": clamp_tweet_text(text)},
+            timeout=30,
+        )
+        if resp.ok:
+            try:
+                tweet_id = resp.json().get("data", {}).get("id")
+            except ValueError:
+                tweet_id = None
+            if tweet_id:
+                print(f"[INFO] X tweet sent: {tweet_id}")
+            else:
+                print("[INFO] X tweet sent")
+        else:
+            print(f"[WARN] X tweet failed: {resp.status_code} {resp.text[:300]}")
+    except Exception as e:
+        print(f"[ERROR] X tweet error: {e}")
 
 
 def log_event(log_file: str, entry: str) -> None:
@@ -541,6 +616,20 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         print(f"{'='*60}\n")
 
         send_pushover(msg, event_url)
+        if price >= 0.995:
+            print("[INFO] X tweet skipped: bet price is already 100%")
+            return
+        send_x_tweet(
+            build_x_alert_tweet(
+                event_title,
+                market_display,
+                outcome,
+                price,
+                usd_value,
+                potential_profit,
+                size,
+            )
+        )
 
 
 def run_monitor(target: str, threshold: float):
