@@ -6,6 +6,7 @@
 #
 # Usage:
 #   ./run_ufc_monitor_daemon.sh start [all|<event_slug>]
+#   ./run_ufc_monitor_daemon.sh restart [all|<event_slug>]
 #   ./run_ufc_monitor_daemon.sh stop
 #   ./run_ufc_monitor_daemon.sh status
 #   ./run_ufc_monitor_daemon.sh logs
@@ -15,6 +16,7 @@
 #   ./run_ufc_monitor_daemon.sh start
 #   ./run_ufc_monitor_daemon.sh start all
 #   ./run_ufc_monitor_daemon.sh start ufc-jus3-pad-2026-01-24
+#   ./run_ufc_monitor_daemon.sh restart all
 #   ./run_ufc_monitor_daemon.sh logs
 #   ./run_ufc_monitor_daemon.sh attach
 #   ./run_ufc_monitor_daemon.sh stop
@@ -133,6 +135,31 @@ stop_monitor() {
     fi
 }
 
+restart_monitor() {
+    local event_slug="${1:-all}"
+
+    if check_session_exists; then
+        echo "Killing existing UFC Whale Monitor session..."
+
+        if [ "$SESSION_CMD" = "screen" ]; then
+            screen -S "$SESSION_NAME" -X quit
+        else  # tmux
+            tmux kill-session -t "$SESSION_NAME"
+        fi
+
+        sleep 1
+
+        if check_session_exists; then
+            echo "ERROR: Failed to kill existing monitor session"
+            exit 1
+        fi
+    else
+        echo "[INFO] Monitor is not running; starting a new session"
+    fi
+
+    start_monitor "$event_slug" "$2"
+}
+
 attach_monitor() {
     if ! check_session_exists; then
         echo "ERROR: Monitor is not running"
@@ -213,6 +240,9 @@ case "$COMMAND" in
     start)
         start_monitor "$2" "$3"
         ;;
+    restart)
+        restart_monitor "$2" "$3"
+        ;;
     stop)
         stop_monitor
         ;;
@@ -232,6 +262,7 @@ case "$COMMAND" in
         echo ""
         echo "Commands:"
         echo "  start <event_slug>              Start monitor in background"
+        echo "  restart <event_slug>            Kill existing session and start monitor"
         echo "  stop                            Stop the running monitor"
         echo "  attach                          Attach to running monitor console"
         echo "  logs                            View live logs from monitor"
@@ -239,6 +270,7 @@ case "$COMMAND" in
         echo ""
         echo "Examples:"
         echo "  $0 start ufc-jus3-pad-2026-01-24"
+        echo "  $0 restart all"
         echo "  $0 status"
         echo "  $0 logs"
         echo "  $0 attach"

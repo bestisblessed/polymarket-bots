@@ -33,6 +33,16 @@ This bot uses the most efficient approach for whale detection:
 python3 monitor_ufc_large_wagers.py "gaethje pimblett"
 ```
 
+Daemon commands:
+
+```bash
+./run_ufc_monitor_daemon.sh start all
+./run_ufc_monitor_daemon.sh restart all
+./run_ufc_monitor_daemon.sh status
+./run_ufc_monitor_daemon.sh logs
+./run_ufc_monitor_daemon.sh stop
+```
+
 ## Threshold
 
 Set the whale alert threshold in `my-sports-bot-ufc/.env`:
@@ -93,7 +103,7 @@ X_ACCESS_TOKEN_SECRET=...
 
 - Alerts rely on `last_trade_price` (executed trades). `price_change` is emitted when orders are placed or canceled, so it can create false whale alerts if used for detection. See the Market Channel docs for details: https://docs.polymarket.com/developers/CLOB/websocket/market-channel.md
 - Only BUY side triggers alerts (avoids duplicate notifications)
-- X alert format mirrors the Pushover details with a flashier title line: `🐳  UFC Whale Alert 🐳`
+- X alert format mirrors the Pushover details with a flashier title line: `🐳  UFC Whale Watch  🐳`
 - X posting failures are logged and do not stop Pushover alerts or the monitor loop
 - Supports both exact event slug and keyword search
 - Auto-reconnects on WebSocket disconnection
