@@ -100,17 +100,20 @@ def build_x_alert_tweet(
     usd_value: float,
     potential_profit: float,
     shares: float,
+    event_url: str,
 ) -> str:
     """Build the short public X alert text."""
     return clamp_tweet_text(
         "\n".join(
             [
-                "🐳  UFC Whale Alert  🐳",
+                "🐳  UFC Whale Watch  🐳",
                 "",
                 f"🥊  {event_title}",
-                f"🎯  {market_display}",
-                f"📈  {outcome} @ {price:.0%}",
-                f"🏆  {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} Shares)",
+                f"Market: {market_display}",
+                f"Side: {outcome} @ {price:.0%}",
+                f"Wager: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} shares)",
+                "",
+                event_url,
             ]
         )
     )
@@ -628,6 +631,7 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
                 usd_value,
                 potential_profit,
                 size,
+                event_url,
             )
         )
 
