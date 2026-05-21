@@ -110,7 +110,7 @@ def build_x_alert_tweet(
                 f"🥊  {event_title}",
                 f"🎯  {market_display}",
                 f"📈  {outcome} @ {price:.0%}",
-                f"🏆 {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} Shares)",
+                f"🏆  {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} Shares)",
             ]
         )
     )
