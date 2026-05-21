@@ -105,7 +105,7 @@ def build_x_alert_tweet(
     return clamp_tweet_text(
         "\n".join(
             [
-                "🐳  UFC Whale Alert 🐳",
+                "🚨🐳  UFC Whale Alert  🚨🐳",
                 "",
                 f"Event: {event_title}",
                 f"Market: {market_display}",
