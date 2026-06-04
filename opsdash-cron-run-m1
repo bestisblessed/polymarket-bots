@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+name="$1"
+log="$2"
+shift 2
+
+if [ "$1" = "--" ]; then
+  shift
+fi
+
+{
+  echo
+  echo "START - $name - $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
+  "$@"
+  status=$?
+
+  if [ "$status" -eq 0 ]; then
+    echo "SUCCESS - $name - $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
+  else
+    echo "FAIL - $name - $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
+  fi
+} >> "$log" 2>&1
+
+exit "$status"

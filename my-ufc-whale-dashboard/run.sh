@@ -2,7 +2,7 @@
 set -e
 
 # UFC Whale Dashboard - Fetch holders data for all UFC fights
-# Cron: */30 * * * * /Users/td/Code/polymarket-bots/my-ufc-whale-dashboard/run.sh
+# Cron: 40 * * * * /Users/pablo/Code/polymarket-bots/my-ufc-whale-dashboard/cron_run.sh
 
 cd "$(dirname "$0")"
 
@@ -15,13 +15,8 @@ echo "Logging to $LOG_FILE"
 
 export PYTHONUNBUFFERED=1
 
-# Use explicit Python path for cron compatibility
-# Resolves the actual binary path (handles pyenv shims, virtualenvs, etc.)
-PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || echo "python")
-if [ -x "$PYTHON" ]; then
-  # Resolve symlinks to get the actual binary path
-  PYTHON=$(readlink -f "$PYTHON" 2>/dev/null || realpath "$PYTHON" 2>/dev/null || echo "$PYTHON")
-fi
+# Use explicit Python path for cron compatibility.
+PYTHON="/Users/pablo/.pyenv/shims/python"
 
 # 1. Fetch live volume data for all active UFC markets
 echo "Starting Volume Fetch..."
@@ -46,8 +41,10 @@ else
 fi
 
 # 5. Copy files to Dashboard
-# Auto-detect path: use ~/mma-ai/Streamlit on Raspberry Pi, fallback to Mac path if it exists
-if [ -d "$HOME/mma-ai/Streamlit/data/whale_data" ]; then
+# Auto-detect path: use the Mac path first, then Raspberry Pi path if present.
+if [ -d "/Users/pablo/Code/mma-ai/Streamlit/data/whale_data" ]; then
+  DEST_DIR="/Users/pablo/Code/mma-ai/Streamlit/data/whale_data"
+elif [ -d "$HOME/mma-ai/Streamlit/data/whale_data" ]; then
   DEST_DIR="$HOME/mma-ai/Streamlit/data/whale_data"
 elif [ -d "/Users/td/Code/mma-ai/Streamlit/data/whale_data" ]; then
   DEST_DIR="/Users/td/Code/mma-ai/Streamlit/data/whale_data"

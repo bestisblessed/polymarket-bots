@@ -1,31 +1,28 @@
 #!/bin/bash
 
 # Cron wrapper for hourly UFC whale dashboard update
-# Runs the pipeline and pushes updated data to Streamlit repo
+# Runs the pipeline and pushes updated data to the Streamlit repo.
 
 set -e
 
-# Set safe PATH for cron environment (include pyenv for Raspberry Pi)
-export PATH="$HOME/.pyenv/shims:$HOME/.pyenv/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="/Users/pablo/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-# Logging
-LOG_FILE="$HOME/polymarket-bots/my-ufc-whale-dashboard/cron.log"
+SCRIPT_DIR="/Users/pablo/Code/polymarket-bots/my-ufc-whale-dashboard"
+STREAMLIT_DIR="/Users/pablo/Code/mma-ai/Streamlit"
+LOG_FILE="$SCRIPT_DIR/cron.log"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 {
   echo "[$TIMESTAMP] Starting hourly UFC whale dashboard update..."
 
-  # Run the pipeline
-  cd "$HOME/polymarket-bots/my-ufc-whale-dashboard"
+  cd "$SCRIPT_DIR"
   bash run.sh
 
   echo "[$TIMESTAMP] Pipeline completed. Checking for changes in Streamlit repo..."
 
-  # Navigate to Streamlit repo and commit/push if changes exist
-  cd "$HOME/mma-ai/Streamlit"
+  cd "$STREAMLIT_DIR"
   git pull
 
-  # Check if there are any changes in data/whale_data
   if git status --porcelain | grep -q "data/whale_data"; then
     echo "[$TIMESTAMP] Changes detected in data/whale_data. Committing and pushing..."
     git add data/whale_data/
