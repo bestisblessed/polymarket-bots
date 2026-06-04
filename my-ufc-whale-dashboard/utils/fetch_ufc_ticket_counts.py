@@ -24,6 +24,7 @@ TRADES_API = "https://data-api.polymarket.com/trades"
 
 LIMIT_EVENTS = 200
 LIMIT_TRADES = 10000
+EVENT_BATCH_SIZE = 10
 SLEEP_BETWEEN_PAGES = 0.1
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
@@ -63,14 +64,22 @@ def fetch_ufc_fight_events() -> list[dict]:
     return fight_events
 
 
-def fetch_trades_for_event(event_id: str) -> list[dict]:
+def _chunks(items: list[str], size: int):
+    for idx in range(0, len(items), size):
+        yield items[idx:idx + size]
+
+
+def fetch_trades_for_events(event_ids: list[str]) -> list[dict]:
+    if not event_ids:
+        return []
+
     all_trades: list[dict] = []
     offset = 0
     while True:
         r = requests.get(
             TRADES_API,
             params={
-                "eventId": event_id,
+                "eventId": ",".join(event_ids),
                 "limit": LIMIT_TRADES,
                 "offset": offset,
                 "side": "BUY",
@@ -89,17 +98,24 @@ def fetch_trades_for_event(event_id: str) -> list[dict]:
     return all_trades
 
 
-def build_ticket_counts(events: list[dict]) -> dict[str, dict]:
+def fetch_trades_for_event(event_id: str) -> list[dict]:
+    return fetch_trades_for_events([event_id])
+
+
+def build_ticket_counts(
+    events: list[dict],
+    batch_size: int = EVENT_BATCH_SIZE,
+    fetcher=fetch_trades_for_events,
+) -> dict[str, dict]:
     ticket_counts: dict[str, dict] = {}
-    for event in events:
-        event_id = event.get("id")
-        if not event_id:
-            continue
-        print(f"Fetching trades for event {event_id}...")
+    event_ids = [str(event.get("id")) for event in events if event.get("id")]
+
+    for batch in _chunks(event_ids, batch_size):
+        print(f"Fetching trades for {len(batch)} events...")
         try:
-            trades = fetch_trades_for_event(str(event_id))
+            trades = fetcher(batch)
         except Exception as exc:
-            print(f"  Error fetching trades for event {event_id}: {exc}")
+            print(f"  Error fetching trades for events {','.join(batch)}: {exc}")
             continue
 
         for trade in trades:

@@ -1,9 +1,15 @@
 #my-sports-bot-ufc/logs/console.log
 #my-sports-bot-ufc/logs/startup.log
+my-ufc-whale-dashboard/cron.log
+my-ufc-whale-dashboard/tests/
+my-sports-bot-ufc/logs/console.log
+my-sports-bot-ufc/logs/startup.log
 .codex
 .env
 *.env
 .cursor
 data/
 testing/
+#*/*/__pycache__/
 .playwright-mcp/
+my-sports-bot-ufc/logs/

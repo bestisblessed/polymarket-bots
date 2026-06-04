@@ -13,6 +13,7 @@ Use `report_ufc_holders.py` to compute Account P&L / UFC P&L and print tables.
 import json
 import os
 from datetime import datetime, timezone
+from typing import Callable
 
 import pandas as pd
 import requests
@@ -23,6 +24,7 @@ DATA_API = "https://data-api.polymarket.com/holders"
 LIMIT_EVENTS = 200
 LIMIT_HOLDERS = 50  # fetch more to have enough for per-side tables
 MIN_BALANCE = 10
+HOLDER_BATCH_SIZE = 20
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
@@ -71,91 +73,155 @@ def fetch_ufc_fight_events():
     return fight_events
 
 
-def fetch_holders_for_market(condition_id):
-    try:
-        r = requests.get(
-            DATA_API,
-            params={"market": condition_id, "limit": LIMIT_HOLDERS, "minBalance": MIN_BALANCE},
-            timeout=15,
-        )
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        print(f"  Error fetching holders for {condition_id}: {e}")
-        return []
+def _chunks(items, size):
+    for idx in range(0, len(items), size):
+        yield items[idx:idx + size]
 
 
-def build_holders_data(events):
-    rows = []
-    fetched_at = datetime.now(timezone.utc).isoformat()
-    market_count = 0
+def _market_info(event, market):
+    outcomes = _parse_list(market.get("outcomes") or [])
+    prices_raw = _parse_list(market.get("outcomePrices") or [])
+    prices = []
+    for p in prices_raw:
+        try:
+            prices.append(float(p))
+        except (ValueError, TypeError):
+            prices.append(None)
 
+    return {
+        "event_slug": event.get("slug", ""),
+        "event_title": event.get("title", ""),
+        "market_question": market.get("question", ""),
+        "market_type": market.get("sportsMarketType", "unknown"),
+        "conditionId": market.get("conditionId"),
+        "outcomes": outcomes,
+        "prices": prices,
+        "clobTokenIds": _parse_list(market.get("clobTokenIds") or []),
+    }
+
+
+def _collect_market_infos(events):
+    market_infos = []
+    token_lookup = {}
     for event in events:
-        event_slug = event.get("slug", "")
-        event_title = event.get("title", "")
-        markets = event.get("markets") or []
-        if not markets:
-            continue
-
-        for market in markets:
+        for market in event.get("markets") or []:
             condition_id = market.get("conditionId")
             if not condition_id:
                 continue
 
-            market_question = market.get("question", "")
-            market_type = market.get("sportsMarketType", "unknown")
+            info = _market_info(event, market)
+            market_infos.append(info)
+            for idx, token_id in enumerate(info["clobTokenIds"]):
+                token_lookup[str(token_id)] = (info, idx)
 
-            outcomes = _parse_list(market.get("outcomes") or [])
-            prices_raw = _parse_list(market.get("outcomePrices") or [])
-            prices = []
-            for p in prices_raw:
-                try:
-                    prices.append(float(p))
-                except (ValueError, TypeError):
-                    prices.append(None)
+    return market_infos, token_lookup
 
-            market_count += 1
-            print(f"Fetching holders for market {market_count}: {market_question[:50]}...")
 
-            holders_data = fetch_holders_for_market(condition_id)
-            for token in holders_data:
-                holders = token.get("holders") or []
-                if not holders:
-                    continue
-                for holder in holders:
-                    wallet = holder.get("proxyWallet")
-                    shares = float(holder.get("amount", 0))
-                    if not wallet or not shares:
-                        continue
-                    outcome_idx = holder.get("outcomeIndex")
-                    if isinstance(outcome_idx, int) and outcomes and outcome_idx < len(outcomes):
-                        outcome_name = outcomes[outcome_idx]
-                    else:
-                        outcome_name = str(outcome_idx)
-                    if isinstance(outcome_idx, int) and prices and outcome_idx < len(prices) and prices[outcome_idx] is not None:
-                        price = prices[outcome_idx]
-                        approx_usd = shares * price
-                    else:
-                        price = None
-                        approx_usd = None
-                    identity = holder.get("name") or holder.get("pseudonym") or wallet
-                    rows.append({
-                        "event_slug": event_slug,
-                        "event_title": event_title,
-                        "market_question": market_question,
-                        "market_type": market_type,
-                        "conditionId": condition_id,
-                        "holder": identity,
-                        "wallet": wallet,
-                        "outcome": outcome_name,
-                        "outcomeIndex": outcome_idx,
-                        "shares": shares,
-                        "price": price,
-                        "approxUsd": approx_usd,
-                        "fetched_at": fetched_at,
-                    })
+def fetch_holders_for_markets(condition_ids):
+    if not condition_ids:
+        return []
+    try:
+        r = requests.get(
+            DATA_API,
+            params={
+                "market": ",".join(condition_ids),
+                "limit": LIMIT_HOLDERS,
+                "minBalance": MIN_BALANCE,
+            },
+            timeout=30,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"  Error fetching holders for {len(condition_ids)} markets: {e}")
+        return []
 
-    print(f"\nProcessed {market_count} markets, found {len(rows)} holder positions")
+
+def fetch_holders_for_market(condition_id):
+    return fetch_holders_for_markets([condition_id])
+
+
+def _holder_row(info, holder, fallback_outcome_idx, fetched_at):
+    wallet = holder.get("proxyWallet")
+    try:
+        shares = float(holder.get("amount", 0))
+    except (TypeError, ValueError):
+        shares = 0.0
+    if not wallet or not shares:
+        return None
+
+    outcome_idx = holder.get("outcomeIndex")
+    if not isinstance(outcome_idx, int):
+        outcome_idx = fallback_outcome_idx
+
+    outcomes = info["outcomes"]
+    prices = info["prices"]
+    if isinstance(outcome_idx, int) and outcomes and outcome_idx < len(outcomes):
+        outcome_name = outcomes[outcome_idx]
+    else:
+        outcome_name = str(outcome_idx)
+    if isinstance(outcome_idx, int) and prices and outcome_idx < len(prices) and prices[outcome_idx] is not None:
+        price = prices[outcome_idx]
+        approx_usd = shares * price
+    else:
+        price = None
+        approx_usd = None
+
+    identity = holder.get("name") or holder.get("pseudonym") or wallet
+    return {
+        "event_slug": info["event_slug"],
+        "event_title": info["event_title"],
+        "market_question": info["market_question"],
+        "market_type": info["market_type"],
+        "conditionId": info["conditionId"],
+        "holder": identity,
+        "wallet": wallet,
+        "outcome": outcome_name,
+        "outcomeIndex": outcome_idx,
+        "shares": shares,
+        "price": price,
+        "approxUsd": approx_usd,
+        "fetched_at": fetched_at,
+    }
+
+
+def build_holders_data(
+    events,
+    batch_size=HOLDER_BATCH_SIZE,
+    fetcher: Callable[[list[str]], list[dict]] = fetch_holders_for_markets,
+):
+    rows = []
+    fetched_at = datetime.now(timezone.utc).isoformat()
+
+    market_infos, token_lookup = _collect_market_infos(events)
+    condition_ids = [info["conditionId"] for info in market_infos]
+
+    for batch_idx, condition_batch in enumerate(_chunks(condition_ids, batch_size), start=1):
+        first = ((batch_idx - 1) * batch_size) + 1
+        last = first + len(condition_batch) - 1
+        print(f"Fetching holders for markets {first}-{last} of {len(condition_ids)}...")
+
+        holders_data = fetcher(condition_batch)
+        fallback_info = None
+        if len(condition_batch) == 1:
+            fallback_info = next((info for info in market_infos if info["conditionId"] == condition_batch[0]), None)
+
+        for token in holders_data:
+            token_id = str(token.get("token", ""))
+            if token_id in token_lookup:
+                info, fallback_outcome_idx = token_lookup[token_id]
+            elif fallback_info is not None:
+                info, fallback_outcome_idx = fallback_info, None
+            else:
+                print(f"  Warning: No market metadata found for holder token {token_id}")
+                continue
+
+            for holder in token.get("holders") or []:
+                row = _holder_row(info, holder, fallback_outcome_idx, fetched_at)
+                if row:
+                    rows.append(row)
+
+    print(f"\nProcessed {len(condition_ids)} markets, found {len(rows)} holder positions")
     return rows
 
 

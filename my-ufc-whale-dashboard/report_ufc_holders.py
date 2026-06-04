@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -23,6 +24,7 @@ from tabulate import tabulate
 
 POSITIONS_API = "https://data-api.polymarket.com/positions"
 CLOSED_POSITIONS_API = "https://data-api.polymarket.com/closed-positions"
+PNL_WORKERS = int(os.getenv("UFC_WHALE_PNL_WORKERS", "8"))
 
 _pnl_cache = {}
 _ufc_pnl_cache = {}
@@ -30,7 +32,11 @@ _client = PolymarketDataClient()
 
 
 def latest_csv():
-    files = sorted(glob.glob("data/ufc_holders_*.csv"), reverse=True)
+    files = sorted(
+        f for f in glob.glob("data/ufc_holders_*.csv")
+        if not f.endswith("_pnl.csv")
+    )
+    files.reverse()
     return files[0] if files else None
 
 
@@ -146,16 +152,52 @@ def get_user_ufc_pnl(wallet):
         return None
 
 
-def compute_pnls(df: pd.DataFrame) -> pd.DataFrame:
-    wallets = df['wallet'].dropna().unique()
+def _fetch_wallet_pnls(wallet, account_pnl_fetcher, ufc_pnl_fetcher):
+    try:
+        account_pnl = account_pnl_fetcher(wallet)
+    except Exception:
+        account_pnl = None
+    try:
+        ufc_pnl = ufc_pnl_fetcher(wallet)
+    except Exception:
+        ufc_pnl = None
+    return wallet, account_pnl, ufc_pnl
+
+
+def compute_pnls(
+    df: pd.DataFrame,
+    account_pnl_fetcher=get_user_pnl,
+    ufc_pnl_fetcher=get_user_ufc_pnl,
+    max_workers=PNL_WORKERS,
+    sleep_between_wallets=0.0,
+) -> pd.DataFrame:
+    wallets = list(df['wallet'].dropna().unique())
     pnl_map = {}
     ufc_pnl_map = {}
-    for idx, w in enumerate(wallets, start=1):
-        pnl_map[w] = get_user_pnl(w)
-        ufc_pnl_map[w] = get_user_ufc_pnl(w)
-        if idx % 10 == 0:
-            print(f"  Fetched P&L for {idx}/{len(wallets)} wallets...")
-        time.sleep(0.025)
+
+    if max_workers <= 1:
+        for idx, wallet in enumerate(wallets, start=1):
+            _, account_pnl, ufc_pnl = _fetch_wallet_pnls(wallet, account_pnl_fetcher, ufc_pnl_fetcher)
+            pnl_map[wallet] = account_pnl
+            ufc_pnl_map[wallet] = ufc_pnl
+            if idx % 10 == 0:
+                print(f"  Fetched P&L for {idx}/{len(wallets)} wallets...")
+            if sleep_between_wallets:
+                time.sleep(sleep_between_wallets)
+    else:
+        workers = min(max_workers, len(wallets)) if wallets else 1
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [
+                executor.submit(_fetch_wallet_pnls, wallet, account_pnl_fetcher, ufc_pnl_fetcher)
+                for wallet in wallets
+            ]
+            for idx, future in enumerate(as_completed(futures), start=1):
+                wallet, account_pnl, ufc_pnl = future.result()
+                pnl_map[wallet] = account_pnl
+                ufc_pnl_map[wallet] = ufc_pnl
+                if idx % 10 == 0:
+                    print(f"  Fetched P&L for {idx}/{len(wallets)} wallets...")
+
     df['account_pnl'] = df['wallet'].map(pnl_map)
     df['ufc_pnl'] = df['wallet'].map(ufc_pnl_map)
     return df
