@@ -13,3 +13,6 @@ testing/
 #*/*/__pycache__/
 .playwright-mcp/
 my-sports-bot-ufc/logs/
+
+# Local UFC bot logs
+my-sports-bot-ufc/logs/
