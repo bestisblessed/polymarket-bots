@@ -23,7 +23,8 @@ GAMMA_API = "https://gamma-api.polymarket.com/events"
 TRADES_API = "https://data-api.polymarket.com/trades"
 
 LIMIT_EVENTS = 200
-LIMIT_TRADES = 10000
+MAX_TRADE_OFFSET = 10000
+TRADE_PAGE_LIMIT = 1000
 EVENT_BATCH_SIZE = 10
 SLEEP_BETWEEN_PAGES = 0.1
 
@@ -75,12 +76,12 @@ def fetch_trades_for_events(event_ids: list[str]) -> list[dict]:
 
     all_trades: list[dict] = []
     offset = 0
-    while True:
+    while offset < MAX_TRADE_OFFSET:
         r = requests.get(
             TRADES_API,
             params={
                 "eventId": ",".join(event_ids),
-                "limit": LIMIT_TRADES,
+                "limit": TRADE_PAGE_LIMIT,
                 "offset": offset,
                 "side": "BUY",
             },
@@ -91,9 +92,9 @@ def fetch_trades_for_events(event_ids: list[str]) -> list[dict]:
         if not trades:
             break
         all_trades.extend(trades)
-        if len(trades) < LIMIT_TRADES:
+        if len(trades) < TRADE_PAGE_LIMIT:
             break
-        offset += LIMIT_TRADES
+        offset += len(trades)
         time.sleep(SLEEP_BETWEEN_PAGES)
     return all_trades
 
