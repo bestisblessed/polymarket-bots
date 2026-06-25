@@ -1,12 +1,3 @@
-{
-  "username": "balthazarpoly",
-  "user_id": "2045565430907936770",
-  "tweet_count": 17,
-  "sources": {
-    "timeline": 17,
-    "search_all": 16
-  },
-  "media_items": 4,
-  "media_downloaded": 4,
-  "out_dir": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/data/x_official_balthazarpoly"
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:851435fe7c9526434db807164abc7e95d32fe145be1a682cf7c208fd6d5280cf
+size 295
