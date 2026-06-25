@@ -11,7 +11,7 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from json import JSONDecodeError
 from typing import Optional
 
@@ -26,11 +26,27 @@ load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
 GAMMA_API = "https://gamma-api.polymarket.com"
 CLOB_API = "https://clob.polymarket.com"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+SPORTS_WS_URL = "wss://sports-api.polymarket.com/ws"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 LOG_DIR = os.path.join(SCRIPT_DIR, "logs")
 
 DEFAULT_ALERT_PRICE = 0.01
 DEFAULT_HEARTBEAT_SECONDS = 300
+DEFAULT_REQUIRE_SPORTS_LIVE = True
+
+LIVE_STATUSES = {"inprogress", "running"}
+ENDED_STATUSES = {
+    "final",
+    "f/ot",
+    "f/so",
+    "finished",
+    "postponed",
+    "canceled",
+    "cancelled",
+    "forfeit",
+    "notnecessary",
+    "awarded",
+}
 
 
 def parse_json_list(value) -> list:
@@ -68,6 +84,87 @@ def best_bid_from_book(book: dict) -> Optional[float]:
 
 def should_alert(asset_id: str, ask_price: Optional[float], threshold: float, alerted_asset_ids: set) -> bool:
     return bool(asset_id) and ask_price is not None and ask_price <= threshold and asset_id not in alerted_asset_ids
+
+
+def env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or str(raw).strip() == "":
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def value_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def sports_state_from_message(data: dict, received_at: Optional[datetime] = None) -> Optional[dict]:
+    if not isinstance(data, dict):
+        return None
+    if data.get("event_type") not in {None, "sport_result"}:
+        return None
+
+    slug = str(data.get("slug") or "").strip().lower()
+    if not slug:
+        return None
+
+    status = str(data.get("status") or "").strip()
+    status_key = status.lower().replace(" ", "")
+    ended = value_bool(data.get("ended")) or status_key in ENDED_STATUSES
+    live = (value_bool(data.get("live")) or status_key in LIVE_STATUSES) and not ended
+
+    return {
+        "slug": slug,
+        "live": live,
+        "ended": ended,
+        "status": status,
+        "score": data.get("score"),
+        "period": data.get("period"),
+        "elapsed": data.get("elapsed"),
+        "updated_at": received_at or datetime.now(timezone.utc),
+    }
+
+
+def is_live_alert_allowed(
+    asset_id: str,
+    info: dict,
+    sports_states: dict,
+    resolved_asset_ids: set,
+    *,
+    require_sports_live: bool,
+    unsafe_ignore_live_gate: bool = False,
+) -> tuple[bool, str]:
+    if asset_id in resolved_asset_ids:
+        return False, "market resolved"
+
+    if info.get("event_closed") or info.get("event_archived"):
+        return False, "event closed or archived"
+    if info.get("market_closed") or info.get("market_archived"):
+        return False, "market closed or archived"
+    if info.get("market_active") is False:
+        return False, "market inactive"
+    if info.get("accepting_orders") is False:
+        return False, "market not accepting orders"
+
+    if unsafe_ignore_live_gate:
+        return True, "live gate bypassed"
+
+    slug = str(info.get("event_slug") or "").strip().lower()
+    state = sports_states.get(slug)
+    if state:
+        if state.get("ended"):
+            return False, f"sports ended ({state.get('status') or 'ended'})"
+        if state.get("live"):
+            return True, f"sports live ({state.get('status') or 'live'})"
+        return False, f"sports not live ({state.get('status') or 'not live'})"
+
+    if require_sports_live:
+        return False, "waiting for sports live state"
+
+    return True, "sports live state not required"
 
 
 def format_price(price: Optional[float]) -> str:
@@ -207,8 +304,16 @@ def build_token_map(events: list) -> tuple[dict, list[str]]:
                     "event_slug": event_slug,
                     "event_title": event_title,
                     "event_url": event_url,
+                    "event_closed": bool(event.get("closed")),
+                    "event_archived": bool(event.get("archived")),
                     "fight_label": fight_label,
                     "market_title": market.get("question") or "Moneyline",
+                    "market_active": market.get("active", True),
+                    "market_closed": bool(market.get("closed")),
+                    "market_archived": bool(market.get("archived")),
+                    "accepting_orders": market.get("acceptingOrders"),
+                    "enable_order_book": market.get("enableOrderBook"),
+                    "condition_id": market.get("conditionId"),
                     "fighter": outcomes[index] if index < len(outcomes) else f"Outcome {index + 1}",
                     "opponent": opponent,
                 }
@@ -217,6 +322,15 @@ def build_token_map(events: list) -> tuple[dict, list[str]]:
     seen = set()
     token_ids = [token_id for token_id in token_ids if not (token_id in seen or seen.add(token_id))]
     return token_map, token_ids
+
+
+def group_tokens_by_slug(token_map: dict) -> dict:
+    grouped = {}
+    for token_id, info in token_map.items():
+        slug = str(info.get("event_slug") or "").strip().lower()
+        if slug:
+            grouped.setdefault(slug, []).append(token_id)
+    return grouped
 
 
 def fetch_books(token_ids: list[str]) -> list[dict]:
@@ -229,7 +343,19 @@ def fetch_books(token_ids: list[str]) -> list[dict]:
     return resp.json() or []
 
 
-def seed_books(token_ids: list[str], book_state: dict, token_map: dict, threshold: float, alerted_asset_ids: set, no_notify: bool, title: str) -> None:
+def seed_books(
+    token_ids: list[str],
+    book_state: dict,
+    token_map: dict,
+    threshold: float,
+    alerted_asset_ids: set,
+    no_notify: bool,
+    title: str,
+    sports_states: dict,
+    resolved_asset_ids: set,
+    require_sports_live: bool,
+    unsafe_ignore_live_gate: bool,
+) -> None:
     print(f"[INFO] Seeding orderbooks for {len(token_ids)} tokens...")
     books = []
     for i in range(0, len(token_ids), 500):
@@ -251,7 +377,20 @@ def seed_books(token_ids: list[str], book_state: dict, token_map: dict, threshol
             info = token_map.get(token_id, {})
             print(f"[INFO] Seed {info.get('fighter', token_id[:12])}: bid={format_price(bid)} ask={format_price(ask)}")
 
-        maybe_alert(token_id, ask, bid, token_map, threshold, alerted_asset_ids, no_notify, title)
+        maybe_alert(
+            token_id,
+            ask,
+            bid,
+            token_map,
+            threshold,
+            alerted_asset_ids,
+            no_notify,
+            title,
+            sports_states,
+            resolved_asset_ids,
+            require_sports_live,
+            unsafe_ignore_live_gate,
+        )
 
 
 def build_alert_message(info: dict, ask_price: float, bid_price: Optional[float], threshold: float) -> str:
@@ -285,12 +424,37 @@ def log_alert(info: dict, ask_price: float, bid_price: Optional[float]) -> None:
         f.write(line + "\n")
 
 
-def maybe_alert(token_id: str, ask_price: Optional[float], bid_price: Optional[float], token_map: dict, threshold: float, alerted_asset_ids: set, no_notify: bool, title: str) -> None:
+def maybe_alert(
+    token_id: str,
+    ask_price: Optional[float],
+    bid_price: Optional[float],
+    token_map: dict,
+    threshold: float,
+    alerted_asset_ids: set,
+    no_notify: bool,
+    title: str,
+    sports_states: dict,
+    resolved_asset_ids: set,
+    require_sports_live: bool,
+    unsafe_ignore_live_gate: bool,
+) -> None:
     if not should_alert(token_id, ask_price, threshold, alerted_asset_ids):
         return
 
-    alerted_asset_ids.add(token_id)
     info = token_map.get(token_id, {})
+    allowed, reason = is_live_alert_allowed(
+        token_id,
+        info,
+        sports_states,
+        resolved_asset_ids,
+        require_sports_live=require_sports_live,
+        unsafe_ignore_live_gate=unsafe_ignore_live_gate,
+    )
+    if not allowed:
+        print(f"[INFO] Alert suppressed for {info.get('fighter', token_id[:12])}: {reason}")
+        return
+
+    alerted_asset_ids.add(token_id)
     message = build_alert_message(info, ask_price, bid_price, threshold)
     print()
     print("=" * 60)
@@ -317,13 +481,96 @@ def subscribe_assets(wsapp, token_ids: list[str], chunk_size: int = 500) -> None
     print(f"[INFO] Subscribed to {len(token_ids)} asset IDs")
 
 
+def start_sports_state_worker(
+    sports_states: dict,
+    tokens_by_slug: dict,
+    book_state: dict,
+    token_map: dict,
+    threshold: float,
+    alerted_asset_ids: set,
+    no_notify: bool,
+    title: str,
+    resolved_asset_ids: set,
+    require_sports_live: bool,
+    unsafe_ignore_live_gate: bool,
+) -> None:
+    def evaluate_slug(slug: str) -> None:
+        for token_id in tokens_by_slug.get(slug, []):
+            state = book_state.get(token_id) or {}
+            maybe_alert(
+                token_id,
+                state.get("best_ask"),
+                state.get("best_bid"),
+                token_map,
+                threshold,
+                alerted_asset_ids,
+                no_notify,
+                title,
+                sports_states,
+                resolved_asset_ids,
+                require_sports_live,
+                unsafe_ignore_live_gate,
+            )
+
+    def on_open(wsapp):
+        print(f"[INFO] Connected to {SPORTS_WS_URL}")
+
+    def on_message(wsapp, message):
+        if message == "ping":
+            wsapp.send("pong")
+            return
+
+        try:
+            data = json.loads(message)
+        except (TypeError, JSONDecodeError):
+            return
+
+        state = sports_state_from_message(data)
+        if not state:
+            return
+
+        slug = state["slug"]
+        if slug not in tokens_by_slug:
+            return
+
+        sports_states[slug] = state
+        status = state.get("status") or ("live" if state.get("live") else "ended" if state.get("ended") else "unknown")
+        print(f"[INFO] Sports state: {slug} status={status} live={state.get('live')} ended={state.get('ended')}")
+
+        if state.get("live") and not state.get("ended"):
+            evaluate_slug(slug)
+
+    def on_error(wsapp, error):
+        print(f"[WARN] Sports WebSocket error: {error}")
+
+    def on_close(wsapp, close_status_code, close_msg):
+        print(f"[WARN] Sports WebSocket closed (code={close_status_code}, msg={close_msg})")
+
+    def run():
+        while True:
+            wsapp = websocket.WebSocketApp(
+                SPORTS_WS_URL,
+                on_open=on_open,
+                on_message=on_message,
+                on_error=on_error,
+                on_close=on_close,
+            )
+            wsapp.run_forever()
+            time.sleep(5)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 def run_monitor(args) -> None:
     threshold = float(os.environ.get("UFC_LIVE_ALERT_PRICE") or DEFAULT_ALERT_PRICE)
     title = os.environ.get("UFC_LIVE_ALERT_TITLE") or "UFC 99/1 Live Odds"
     heartbeat_seconds = int(os.environ.get("UFC_LIVE_HEARTBEAT_SECONDS") or DEFAULT_HEARTBEAT_SECONDS)
+    unsafe_ignore_live_gate = bool(args.unsafe_ignore_live_gate)
+    require_sports_live = env_bool("UFC_REQUIRE_SPORTS_LIVE", DEFAULT_REQUIRE_SPORTS_LIVE) and not unsafe_ignore_live_gate
 
     events = find_event_by_slug_or_search(args.target)
     token_map, token_ids = build_token_map(events)
+    tokens_by_slug = group_tokens_by_slug(token_map)
 
     if args.list:
         for event in events:
@@ -343,11 +590,44 @@ def run_monitor(args) -> None:
     print(f"[INFO] Moneyline tokens: {len(token_ids)}")
     print(f"[INFO] Alert threshold: ask <= {format_price(threshold)}")
     print(f"[INFO] Notifications: {'disabled' if args.no_notify else 'enabled'}")
+    print(f"[INFO] Live gate: {'sports websocket required' if require_sports_live else 'not required'}")
+    if unsafe_ignore_live_gate:
+        print("[WARN] Unsafe live gate bypass enabled")
     print()
 
     book_state = {}
     alerted_asset_ids = set()
-    seed_books(token_ids, book_state, token_map, threshold, alerted_asset_ids, args.no_notify, title)
+    sports_states = {}
+    resolved_asset_ids = set()
+
+    if require_sports_live:
+        start_sports_state_worker(
+            sports_states,
+            tokens_by_slug,
+            book_state,
+            token_map,
+            threshold,
+            alerted_asset_ids,
+            args.no_notify,
+            title,
+            resolved_asset_ids,
+            require_sports_live,
+            unsafe_ignore_live_gate,
+        )
+
+    seed_books(
+        token_ids,
+        book_state,
+        token_map,
+        threshold,
+        alerted_asset_ids,
+        args.no_notify,
+        title,
+        sports_states,
+        resolved_asset_ids,
+        require_sports_live,
+        unsafe_ignore_live_gate,
+    )
 
     if args.seed_only:
         return
@@ -406,14 +686,45 @@ def run_monitor(args) -> None:
                     bid = to_float(change.get("best_bid"))
                     if asset_id:
                         book_state[asset_id] = {"best_ask": ask, "best_bid": bid}
-                        maybe_alert(asset_id, ask, bid, token_map, threshold, alerted_asset_ids, args.no_notify, title)
+                        maybe_alert(
+                            asset_id,
+                            ask,
+                            bid,
+                            token_map,
+                            threshold,
+                            alerted_asset_ids,
+                            args.no_notify,
+                            title,
+                            sports_states,
+                            resolved_asset_ids,
+                            require_sports_live,
+                            unsafe_ignore_live_gate,
+                        )
+                continue
+            elif event_type == "market_resolved":
+                for asset_id in parse_json_list(data.get("assets_ids") or data.get("asset_ids")):
+                    resolved_asset_ids.add(str(asset_id))
+                print(f"[INFO] Market resolved: {data.get('slug') or data.get('market')}")
                 continue
             else:
                 continue
 
             if token_id:
                 book_state[token_id] = {"best_ask": ask, "best_bid": bid}
-                maybe_alert(token_id, ask, bid, token_map, threshold, alerted_asset_ids, args.no_notify, title)
+                maybe_alert(
+                    token_id,
+                    ask,
+                    bid,
+                    token_map,
+                    threshold,
+                    alerted_asset_ids,
+                    args.no_notify,
+                    title,
+                    sports_states,
+                    resolved_asset_ids,
+                    require_sports_live,
+                    unsafe_ignore_live_gate,
+                )
 
         if time.time() - last_heartbeat >= heartbeat_seconds:
             last_heartbeat = time.time()
@@ -447,6 +758,11 @@ def main() -> None:
     parser.add_argument("--no-notify", action="store_true", help="print alerts without sending Pushover")
     parser.add_argument("--max-seconds", type=int, help="stop after this many seconds")
     parser.add_argument("--seed-only", action="store_true", help="fetch current books and exit without opening WebSocket")
+    parser.add_argument(
+        "--unsafe-ignore-live-gate",
+        action="store_true",
+        help="testing only: allow alerts without sports websocket live status",
+    )
     args = parser.parse_args()
 
     run_monitor(args)
