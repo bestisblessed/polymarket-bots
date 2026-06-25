@@ -1,0 +1,32 @@
+{
+  "activity_by_side": {
+    "BUY": 1732,
+    "SELL": 1181,
+    "UNKNOWN": 587
+  },
+  "activity_by_type": {
+    "CONVERSION": 171,
+    "MAKER_REBATE": 1,
+    "MERGE": 128,
+    "REDEEM": 158,
+    "SPLIT": 129,
+    "TRADE": 2913
+  },
+  "activity_rows": 3500,
+  "captured_at": "2026-06-25T08:31:47+00:00",
+  "closed_positions": 50883,
+  "combo_activity": 0,
+  "combo_positions": 0,
+  "current_positions": 9020,
+  "markets_in_trade_activity": 1146,
+  "metadata_file": "metadata.json",
+  "timeline_rows": 4094,
+  "trade_rows": 3500,
+  "value": [
+    {
+      "user": "0x5a218c7ad04135830a45c41aaed7294df7809318",
+      "value": 461470.6837
+    }
+  ],
+  "wallet": "0x5a218c7ad04135830a45c41aaed7294df7809318"
+}
