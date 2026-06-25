@@ -21,6 +21,14 @@ import requests
 DATA_API = "https://data-api.polymarket.com"
 DEFAULT_WALLET = "0x5a218c7ad04135830a45c41aaed7294df7809318"
 WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
+DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "data" / "polymarket_balthazar"
+DEFAULT_X_TWEETS = (
+    Path(__file__).resolve().parents[1]
+    / "x"
+    / "data"
+    / "x_official_balthazarpoly"
+    / "tweets_combined.json"
+)
 
 
 def utc_now() -> str:
@@ -465,8 +473,8 @@ def write_outputs(out_dir: Path, name: str, rows: list[dict[str, Any]], fields: 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wallet", default=DEFAULT_WALLET)
-    parser.add_argument("--out-dir", type=Path, default=Path("my-correlation-bot-v1/data/polymarket_balthazar"))
-    parser.add_argument("--x-tweets", type=Path, default=Path("my-correlation-bot-v1/data/x_balthazarpoly/tweets_combined.json"))
+    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument("--x-tweets", type=Path, default=DEFAULT_X_TWEETS)
     parser.add_argument("--page-limit", type=int, default=500)
     parser.add_argument("--max-offset", type=int, default=10000)
     parser.add_argument("--delay-s", type=float, default=0.15)

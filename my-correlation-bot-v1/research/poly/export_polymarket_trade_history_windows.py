@@ -20,6 +20,7 @@ import requests
 DATA_API = "https://data-api.polymarket.com"
 DEFAULT_WALLET = "0x5a218c7ad04135830a45c41aaed7294df7809318"
 WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
+DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "data" / "polymarket_balthazar"
 PAGE_LIMIT = 500
 MAX_LIVE_OFFSET = 3000
 
@@ -225,7 +226,7 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wallet", default=DEFAULT_WALLET)
-    parser.add_argument("--out-dir", type=Path, default=Path("my-correlation-bot-v1/data/polymarket_balthazar"))
+    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--delay-s", type=float, default=0.05)
     parser.add_argument("--max-windows", type=int, default=100)
     args = parser.parse_args()

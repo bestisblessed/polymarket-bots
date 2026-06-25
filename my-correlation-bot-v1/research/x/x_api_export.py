@@ -434,6 +434,32 @@ def download_media(rows: list[dict], media_dir: Path) -> list[dict]:
     return manifest
 
 
+FINAL_KEEP_FILES = {
+    "tweets_combined.csv",
+    "tweets_combined.jsonl",
+    "tweets_combined.json",
+    "media_manifest.json",
+    "summary.json",
+}
+
+
+def clean_final_outputs(out_dir: Path) -> None:
+    for child in out_dir.iterdir():
+        if child.name == "media":
+            continue
+        if child.is_file() and child.name in FINAL_KEEP_FILES:
+            continue
+        if child.is_dir():
+            for nested in sorted(child.rglob("*"), reverse=True):
+                if nested.is_file() or nested.is_symlink():
+                    nested.unlink()
+                elif nested.is_dir():
+                    nested.rmdir()
+            child.rmdir()
+        else:
+            child.unlink()
+
+
 def command_lookup(args: argparse.Namespace) -> int:
     load_env_file(args.env)
     payload = lookup_user(args.username)
@@ -522,6 +548,7 @@ def command_export(args: argparse.Namespace) -> int:
         "out_dir": str(out_dir),
     }
     write_json(out_dir / "summary.json", summary)
+    clean_final_outputs(out_dir)
     print(json.dumps(summary, indent=2))
     return 0
 

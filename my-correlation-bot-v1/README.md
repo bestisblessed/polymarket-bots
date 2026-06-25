@@ -68,20 +68,20 @@ Full-archive search requires the app's X API access level to allow `/2/tweets/se
 
 ## Polymarket Export
 
-Public wallet activity for `0x5a218c7ad04135830a45c41aaed7294df7809318` is saved under `data/polymarket_balthazar/`.
+Public wallet activity for `0x5a218c7ad04135830a45c41aaed7294df7809318` is saved under `research/poly/data/polymarket_balthazar/`.
 
 Refresh the Polymarket export:
 
 ```bash
-python my-correlation-bot-v1/scripts/export_polymarket_activity.py
+python my-correlation-bot-v1/research/poly/export_polymarket_activity.py
 ```
 
-The exporter captures raw Data API responses plus normalized CSV/JSONL files for activity, trades, current positions, closed positions, market summaries, combo data, and a combined `correlation_timeline.csv` with the X export.
+The exporter captures raw Data API responses plus normalized CSV/JSONL files for activity, trades, current positions, closed positions, market summaries, combo data, and a combined `correlation_timeline.csv` with the X export from `research/x/data/x_official_balthazarpoly/` by default.
 
 The public `/activity` endpoint can be walked farther back for trade rows by using timestamp windows:
 
 ```bash
-python my-correlation-bot-v1/scripts/export_polymarket_trade_history_windows.py
+python my-correlation-bot-v1/research/poly/export_polymarket_trade_history_windows.py
 ```
 
 That produces `trade_transactions_master.*` and `trade_transactions_market_summary.*` files.
@@ -89,7 +89,7 @@ That produces `trade_transactions_master.*` and `trade_transactions_market_summa
 When `/activity` timestamp windows are unavailable, the largest currently reachable `/trades` export can be refreshed with:
 
 ```bash
-python my-correlation-bot-v1/scripts/export_polymarket_trades_public_cap.py
+python my-correlation-bot-v1/research/poly/export_polymarket_trades_public_cap.py
 ```
 
 That produces `trade_transactions_public_cap_master.*` and records whether the public cap was still hit.

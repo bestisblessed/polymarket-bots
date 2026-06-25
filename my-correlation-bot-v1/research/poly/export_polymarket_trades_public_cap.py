@@ -20,6 +20,7 @@ import requests
 DATA_API = "https://data-api.polymarket.com"
 DEFAULT_WALLET = "0x5a218c7ad04135830a45c41aaed7294df7809318"
 WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
+DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "data" / "polymarket_balthazar"
 PAGE_LIMIT = 1000
 OFFSETS = [0, 1000, 2000, 3000]
 
@@ -148,7 +149,7 @@ def normalize(row: dict[str, Any], sources: list[str]) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wallet", default=DEFAULT_WALLET)
-    parser.add_argument("--out-dir", type=Path, default=Path("my-correlation-bot-v1/data/polymarket_balthazar"))
+    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     args = parser.parse_args()
 
     wallet = args.wallet.lower()
