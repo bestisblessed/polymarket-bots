@@ -58,6 +58,18 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
 
 
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text())
+
+
+def checkpoint_name(path: str) -> str:
+    return path.strip("/").replace("-", "_").replace("/", "_")
+
+
+def checkpoint_path(checkpoint_dir: Path, offset: int) -> Path:
+    return checkpoint_dir / f"offset_{offset:08d}.json"
+
+
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as handle:
@@ -102,35 +114,52 @@ def fetch_list_pages(
     page_limit: int,
     max_offset: int,
     delay_s: float,
+    checkpoint_dir: Path | None = None,
+    force_refresh: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     pages: list[dict[str, Any]] = []
     offset = 0
+    resumed_pages = 0
+    fetched_pages = 0
 
     while offset <= max_offset:
         page_params = {**params, "limit": page_limit, "offset": offset}
-        try:
-            page = request_json(session, path, page_params)
-        except requests.HTTPError as exc:
-            if not rows:
-                raise
-            response = exc.response
-            pages.append({"offset": offset, "count": 0, "error": str(exc)})
-            return rows, {
-                "complete": False,
-                "pages": pages,
-                "next_offset": offset,
-                "stop_reason": "http_error_after_partial",
-                "error": str(exc),
-                "status_code": response.status_code if response is not None else None,
-                "response_text": response.text[:500] if response is not None else "",
-            }
+        page_file = checkpoint_path(checkpoint_dir, offset) if checkpoint_dir else None
+        source = "api"
+        if page_file and page_file.exists() and not force_refresh:
+            page = read_json(page_file)
+            source = "checkpoint"
+            resumed_pages += 1
+        else:
+            try:
+                page = request_json(session, path, page_params)
+            except requests.HTTPError as exc:
+                if not rows:
+                    raise
+                response = exc.response
+                pages.append({"offset": offset, "count": 0, "error": str(exc)})
+                return rows, {
+                    "complete": False,
+                    "pages": pages,
+                    "next_offset": offset,
+                    "stop_reason": "http_error_after_partial",
+                    "error": str(exc),
+                    "status_code": response.status_code if response is not None else None,
+                    "response_text": response.text[:500] if response is not None else "",
+                    "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+                    "resumed_pages": resumed_pages,
+                    "fetched_pages": fetched_pages,
+                }
+            if page_file:
+                write_json(page_file, page)
+            fetched_pages += 1
         if not isinstance(page, list):
             raise ValueError(f"{path} returned {type(page).__name__}, expected list")
 
-        pages.append({"offset": offset, "count": len(page)})
+        pages.append({"offset": offset, "count": len(page), "source": source})
         rows.extend(page)
-        print(f"{path} offset={offset} count={len(page)}", flush=True)
+        print(f"{path} offset={offset} count={len(page)} source={source}", flush=True)
 
         if len(page) < page_limit:
             return rows, {
@@ -138,6 +167,9 @@ def fetch_list_pages(
                 "pages": pages,
                 "next_offset": None,
                 "stop_reason": "last_page_under_limit",
+                "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+                "resumed_pages": resumed_pages,
+                "fetched_pages": fetched_pages,
             }
         offset += page_limit
         if delay_s:
@@ -148,6 +180,9 @@ def fetch_list_pages(
         "pages": pages,
         "next_offset": offset,
         "stop_reason": "max_offset_reached",
+        "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+        "resumed_pages": resumed_pages,
+        "fetched_pages": fetched_pages,
     }
 
 
@@ -160,30 +195,47 @@ def fetch_object_pages(
     page_limit: int,
     max_offset: int,
     delay_s: float,
+    checkpoint_dir: Path | None = None,
+    force_refresh: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
     rows: list[dict[str, Any]] = []
     pages: list[dict[str, Any]] = []
     raw_pages: list[dict[str, Any]] = []
     offset = 0
+    resumed_pages = 0
+    fetched_pages = 0
 
     while offset <= max_offset:
         page_params = {**params, "limit": page_limit, "offset": offset}
-        try:
-            page = request_json(session, path, page_params)
-        except requests.HTTPError as exc:
-            if not rows:
-                raise
-            response = exc.response
-            pages.append({"offset": offset, "count": 0, "error": str(exc)})
-            return rows, {
-                "complete": False,
-                "pages": pages,
-                "next_offset": offset,
-                "stop_reason": "http_error_after_partial",
-                "error": str(exc),
-                "status_code": response.status_code if response is not None else None,
-                "response_text": response.text[:500] if response is not None else "",
-            }, raw_pages
+        page_file = checkpoint_path(checkpoint_dir, offset) if checkpoint_dir else None
+        source = "api"
+        if page_file and page_file.exists() and not force_refresh:
+            page = read_json(page_file)
+            source = "checkpoint"
+            resumed_pages += 1
+        else:
+            try:
+                page = request_json(session, path, page_params)
+            except requests.HTTPError as exc:
+                if not rows:
+                    raise
+                response = exc.response
+                pages.append({"offset": offset, "count": 0, "error": str(exc)})
+                return rows, {
+                    "complete": False,
+                    "pages": pages,
+                    "next_offset": offset,
+                    "stop_reason": "http_error_after_partial",
+                    "error": str(exc),
+                    "status_code": response.status_code if response is not None else None,
+                    "response_text": response.text[:500] if response is not None else "",
+                    "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+                    "resumed_pages": resumed_pages,
+                    "fetched_pages": fetched_pages,
+                }, raw_pages
+            if page_file:
+                write_json(page_file, page)
+            fetched_pages += 1
         if not isinstance(page, dict):
             raise ValueError(f"{path} returned {type(page).__name__}, expected object")
         raw_pages.append(page)
@@ -192,9 +244,9 @@ def fetch_object_pages(
             raise ValueError(f"{path}.{data_key} returned {type(page_rows).__name__}, expected list")
 
         pagination = page.get("pagination") or {}
-        pages.append({"offset": offset, "count": len(page_rows), "pagination": pagination})
+        pages.append({"offset": offset, "count": len(page_rows), "pagination": pagination, "source": source})
         rows.extend(page_rows)
-        print(f"{path} offset={offset} count={len(page_rows)}", flush=True)
+        print(f"{path} offset={offset} count={len(page_rows)} source={source}", flush=True)
 
         has_more = pagination.get("has_more")
         if has_more is False or len(page_rows) < page_limit:
@@ -203,6 +255,9 @@ def fetch_object_pages(
                 "pages": pages,
                 "next_offset": None,
                 "stop_reason": "pagination_complete",
+                "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+                "resumed_pages": resumed_pages,
+                "fetched_pages": fetched_pages,
             }, raw_pages
         offset += page_limit
         if delay_s:
@@ -213,6 +268,9 @@ def fetch_object_pages(
         "pages": pages,
         "next_offset": offset,
         "stop_reason": "max_offset_reached",
+        "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir else "",
+        "resumed_pages": resumed_pages,
+        "fetched_pages": fetched_pages,
     }, raw_pages
 
 
@@ -478,6 +536,7 @@ def main() -> int:
     parser.add_argument("--page-limit", type=int, default=2500)
     parser.add_argument("--max-offset", type=int, default=10000)
     parser.add_argument("--delay-s", type=float, default=0.075)
+    parser.add_argument("--force-refresh", action="store_true")
     args = parser.parse_args()
 
     wallet = args.wallet.lower()
@@ -486,6 +545,7 @@ def main() -> int:
 
     raw_dir = args.out_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
+    page_root = raw_dir / "pages"
 
     session = requests.Session()
     session.headers.update({"User-Agent": "polymarket-bots-correlation-export/1.0"})
@@ -497,6 +557,8 @@ def main() -> int:
         "data_api": DATA_API,
         "page_limit": args.page_limit,
         "max_offset": args.max_offset,
+        "force_refresh": bool(args.force_refresh),
+        "checkpoint_root": str(page_root),
         "endpoints": {},
         "docs": [
             "https://docs.polymarket.com/api-reference/core/get-user-activity",
@@ -516,6 +578,8 @@ def main() -> int:
         page_limit=min(args.page_limit, 500),
         max_offset=args.max_offset,
         delay_s=args.delay_s,
+        checkpoint_dir=page_root / checkpoint_name("/activity"),
+        force_refresh=args.force_refresh,
     )
     metadata["endpoints"]["activity"] = activity_meta
     write_json(raw_dir / "activity.json", activity_raw)
@@ -527,6 +591,8 @@ def main() -> int:
         page_limit=min(args.page_limit, 2500),
         max_offset=args.max_offset,
         delay_s=args.delay_s,
+        checkpoint_dir=page_root / checkpoint_name("/trades"),
+        force_refresh=args.force_refresh,
     )
     metadata["endpoints"]["trades"] = trades_meta
     write_json(raw_dir / "trades.json", trades_raw)
@@ -538,6 +604,8 @@ def main() -> int:
         page_limit=min(args.page_limit, 500),
         max_offset=args.max_offset,
         delay_s=args.delay_s,
+        checkpoint_dir=page_root / checkpoint_name("/positions"),
+        force_refresh=args.force_refresh,
     )
     metadata["endpoints"]["positions"] = positions_meta
     write_json(raw_dir / "positions.json", positions_raw)
@@ -549,6 +617,8 @@ def main() -> int:
         page_limit=50,
         max_offset=100000,
         delay_s=args.delay_s,
+        checkpoint_dir=page_root / checkpoint_name("/closed-positions"),
+        force_refresh=args.force_refresh,
     )
     metadata["endpoints"]["closed_positions"] = closed_meta
     write_json(raw_dir / "closed_positions.json", closed_raw)
@@ -566,6 +636,8 @@ def main() -> int:
             max_offset=args.max_offset,
             delay_s=args.delay_s,
             data_key="combos",
+            checkpoint_dir=page_root / checkpoint_name("/v1/positions/combos"),
+            force_refresh=args.force_refresh,
         )
         metadata["endpoints"]["combo_positions"] = combo_positions_meta
         write_json(raw_dir / "combo_positions.json", combo_positions_raw)
@@ -583,6 +655,8 @@ def main() -> int:
             max_offset=args.max_offset,
             delay_s=args.delay_s,
             data_key="activity",
+            checkpoint_dir=page_root / checkpoint_name("/v1/activity/combos"),
+            force_refresh=args.force_refresh,
         )
         metadata["endpoints"]["combo_activity"] = combo_activity_meta
         write_json(raw_dir / "combo_activity.json", combo_activity_raw)

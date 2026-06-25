@@ -78,6 +78,7 @@ python my-correlation-bot-v1/research/poly/export_polymarket_activity.py
 
 The exporter captures raw Data API responses plus normalized CSV/JSONL files for activity, trades, current positions, closed positions, market summaries, combo data, and a combined `correlation_timeline.csv` with the X export from `research/x/data/x_official_balthazarpoly/` by default.
 The default delay is `0.075` seconds between paginated requests, which keeps sequential `/closed-positions` requests under the documented `150 req / 10s` Data API endpoint limit.
+Paginated endpoints checkpoint pages under `research/poly/data/polymarket_balthazar/raw/pages/` and resume by default. Add `--force-refresh` to ignore checkpoints and rebuild from the API.
 
 The public `/activity` endpoint can be walked farther back for trade rows by using timestamp windows:
 
@@ -86,6 +87,7 @@ python my-correlation-bot-v1/research/poly/export_polymarket_trade_history_windo
 ```
 
 That produces `trade_transactions_master.*` and `trade_transactions_market_summary.*` files.
+Trade history windows reuse completed `raw/activity_trade_windows/window_###.json` files and checkpoint unfinished window pages under `raw/activity_trade_windows/pages/`. Add `--force-refresh` for a clean API rebuild.
 
 When `/activity` timestamp windows are unavailable, the largest currently reachable `/trades` export can be refreshed with:
 

@@ -23,6 +23,7 @@ WALLET_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "data" / "polymarket_balthazar"
 PAGE_LIMIT = 500
 MAX_LIVE_OFFSET = 3000
+MAX_WINDOW_ROWS = ((MAX_LIVE_OFFSET // PAGE_LIMIT) + 1) * PAGE_LIMIT
 
 
 def utc_now() -> str:
@@ -50,6 +51,14 @@ def decimal_value(value: Any) -> Decimal:
 def write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+
+
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text())
+
+
+def checkpoint_path(checkpoint_dir: Path, offset: int) -> Path:
+    return checkpoint_dir / f"offset_{offset:08d}.json"
 
 
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -101,10 +110,14 @@ def fetch_window(
     *,
     end_ts: int | None,
     delay_s: float,
+    checkpoint_dir: Path,
+    force_refresh: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     pages: list[dict[str, Any]] = []
     complete = False
+    resumed_pages = 0
+    fetched_pages = 0
     for offset in range(0, MAX_LIVE_OFFSET + 1, PAGE_LIMIT):
         params: dict[str, Any] = {
             "user": wallet,
@@ -116,18 +129,50 @@ def fetch_window(
         }
         if end_ts is not None:
             params["end"] = end_ts
-        page = request_activity(session, params)
+        page_file = checkpoint_path(checkpoint_dir, offset)
+        source = "api"
+        if page_file.exists() and not force_refresh:
+            page = read_json(page_file)
+            source = "checkpoint"
+            resumed_pages += 1
+        else:
+            page = request_activity(session, params)
+            write_json(page_file, page)
+            fetched_pages += 1
+        if not isinstance(page, list):
+            raise ValueError(f"Window checkpoint returned {type(page).__name__}, expected list")
         rows.extend(page)
-        pages.append({"offset": offset, "count": len(page)})
-        print(f"window_end={end_ts or 'latest'} offset={offset} count={len(page)}", flush=True)
+        pages.append({"offset": offset, "count": len(page), "source": source})
+        print(f"window_end={end_ts or 'latest'} offset={offset} count={len(page)} source={source}", flush=True)
         if len(page) < PAGE_LIMIT:
             complete = True
             break
         if delay_s:
             time.sleep(delay_s)
 
+    metadata = summarize_window(
+        rows,
+        end_ts=end_ts,
+        pages=pages,
+        complete=complete,
+        stop_reason="short_page" if complete else "live_offset_cap",
+    )
+    metadata["checkpoint_dir"] = str(checkpoint_dir)
+    metadata["resumed_pages"] = resumed_pages
+    metadata["fetched_pages"] = fetched_pages
+    return rows, metadata
+
+
+def summarize_window(
+    rows: list[dict[str, Any]],
+    *,
+    end_ts: int | None,
+    pages: list[dict[str, Any]],
+    complete: bool,
+    stop_reason: str,
+) -> dict[str, Any]:
     timestamps = [int(row["timestamp"]) for row in rows if row.get("timestamp") is not None]
-    metadata = {
+    return {
         "end": end_ts,
         "rows": len(rows),
         "complete": complete,
@@ -136,9 +181,8 @@ def fetch_window(
         "oldest_timestamp": min(timestamps) if timestamps else None,
         "newest_datetime_utc": timestamp_to_iso(max(timestamps)) if timestamps else "",
         "oldest_datetime_utc": timestamp_to_iso(min(timestamps)) if timestamps else "",
-        "stop_reason": "short_page" if complete else "live_offset_cap",
+        "stop_reason": stop_reason,
     }
-    return rows, metadata
 
 
 def dedupe_key(row: dict[str, Any]) -> tuple[Any, ...]:
@@ -229,6 +273,7 @@ def main() -> int:
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--delay-s", type=float, default=0.05)
     parser.add_argument("--max-windows", type=int, default=100)
+    parser.add_argument("--force-refresh", action="store_true")
     args = parser.parse_args()
 
     wallet = args.wallet.lower()
@@ -240,10 +285,13 @@ def main() -> int:
 
     chunk_dir = args.out_dir / "raw" / "activity_trade_windows"
     chunk_dir.mkdir(parents=True, exist_ok=True)
+    page_root = chunk_dir / "pages"
     metadata: dict[str, Any] = {
         "wallet": wallet,
         "captured_at": utc_now(),
         "endpoint": f"{DATA_API}/activity",
+        "force_refresh": bool(args.force_refresh),
+        "checkpoint_root": str(page_root),
         "params": {
             "type": "TRADE",
             "sortBy": "TIMESTAMP",
@@ -260,8 +308,32 @@ def main() -> int:
     end_ts: int | None = None
 
     for window_index in range(args.max_windows):
-        rows, window_meta = fetch_window(session, wallet, end_ts=end_ts, delay_s=args.delay_s)
-        write_json(chunk_dir / f"window_{window_index:03d}.json", rows)
+        window_file = chunk_dir / f"window_{window_index:03d}.json"
+        if window_file.exists() and not args.force_refresh:
+            rows = read_json(window_file)
+            if not isinstance(rows, list):
+                raise ValueError(f"{window_file} returned {type(rows).__name__}, expected list")
+            window_complete = len(rows) < MAX_WINDOW_ROWS
+            window_meta = summarize_window(
+                rows,
+                end_ts=end_ts,
+                pages=[{"source": "completed_window", "count": len(rows)}],
+                complete=window_complete,
+                stop_reason="short_page" if window_complete else "live_offset_cap",
+            )
+            window_meta["completed_window_file"] = str(window_file)
+            window_meta["resumed_completed_window"] = True
+            print(f"window_index={window_index} count={len(rows)} source=completed_window", flush=True)
+        else:
+            rows, window_meta = fetch_window(
+                session,
+                wallet,
+                end_ts=end_ts,
+                delay_s=args.delay_s,
+                checkpoint_dir=page_root / f"window_{window_index:03d}",
+                force_refresh=args.force_refresh,
+            )
+            write_json(window_file, rows)
         window_meta["index"] = window_index
         metadata["windows"].append(window_meta)
 
