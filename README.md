@@ -100,6 +100,11 @@ One-off scripts in `utils/` for various Polymarket tasks
 
 ## Bots (Development & Hypothetical)
 
+- **`my-correlation-bot-v1`** - Research workspace for analyzing `@balthazarpoly` X posts/replies, media, and later Polymarket activity signals.
+	- Current X export artifacts live under `my-correlation-bot-v1/data/x_balthazarpoly/`.
+	- Normalize raw `bird-keychain` captures with `python my-correlation-bot-v1/scripts/normalize_x_export.py --raw-dir my-correlation-bot-v1/data/x_balthazarpoly/raw --out-dir my-correlation-bot-v1/data/x_balthazarpoly`.
+	- Export public Polymarket wallet activity with `python my-correlation-bot-v1/scripts/export_polymarket_activity.py`.
+
 - **Market screener bot** - Discover new opportunities quickly.
 	- Finds new markets by category/liquidity; scores them by volume/OI; outputs a ranked watchlist and sends alerts for new markets.
 	- Uses: `Gamma` (direct REST or `PolymarketGammaClient`), maybe GraphQL.
