@@ -475,7 +475,7 @@ def main() -> int:
     parser.add_argument("--wallet", default=DEFAULT_WALLET)
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument("--x-tweets", type=Path, default=DEFAULT_X_TWEETS)
-    parser.add_argument("--page-limit", type=int, default=500)
+    parser.add_argument("--page-limit", type=int, default=2500)
     parser.add_argument("--max-offset", type=int, default=10000)
     parser.add_argument("--delay-s", type=float, default=0.15)
     args = parser.parse_args()
@@ -524,7 +524,7 @@ def main() -> int:
         session,
         "/trades",
         {"user": wallet, "takerOnly": "false"},
-        page_limit=min(args.page_limit, 500),
+        page_limit=min(args.page_limit, 2500),
         max_offset=args.max_offset,
         delay_s=args.delay_s,
     )
