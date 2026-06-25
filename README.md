@@ -85,8 +85,8 @@ One-off scripts in `utils/` for various Polymarket tasks
 	- Cron helpers: `my-sports-bot/run_monitor_game_holders.sh` and `my-sports-bot/run_monitor_game_holders_profit.sh`.
 
 - **`my-live-ufc-bot`** - Live UFC 99/1 moneyline odds alert bot.
-	- Watches active UFC moneyline markets with Gamma event discovery and the CLOB market websocket.
-	- Sends a Pushover alert when a fighter is buyable at `0.01` or lower.
+	- Watches active UFC moneyline markets with Gamma event discovery, the CLOB market websocket, and the sports status websocket.
+	- Sends a Pushover alert when a fighter is buyable at `0.01` or lower while that exact fight is live.
 	- Run via `bash my-live-ufc-bot/run.sh` with local `.env` Pushover credentials.
 
 - **`my-creamster-monitor-bot`** - Watches a single wallet and pings Pushover on new activity.
