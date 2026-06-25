@@ -83,7 +83,7 @@ DEFAULT_USER_FIELDS = ",".join(
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parent
 
 
 def parse_env_value(value: str) -> str:
