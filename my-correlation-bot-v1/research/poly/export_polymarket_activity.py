@@ -477,7 +477,7 @@ def main() -> int:
     parser.add_argument("--x-tweets", type=Path, default=DEFAULT_X_TWEETS)
     parser.add_argument("--page-limit", type=int, default=2500)
     parser.add_argument("--max-offset", type=int, default=10000)
-    parser.add_argument("--delay-s", type=float, default=0.15)
+    parser.add_argument("--delay-s", type=float, default=0.075)
     args = parser.parse_args()
 
     wallet = args.wallet.lower()
