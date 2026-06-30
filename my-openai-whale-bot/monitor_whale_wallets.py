@@ -64,9 +64,9 @@ else:
 # Configuration - Wallet addresses for the whales
 WHALES = {
     "0xLuck": "0xdba78eaec18da2455d4b78de38828c2d91f0ae61",
-    "Iam100x": "0x804600942f9044bf4f4ec7f1815b186184e60a1b",
-    "RootAccessed": "0x066d64fa7b2e352b9000a51c6b56f53128cce6e6",
-    "CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
+    #"Iam100x": "0x804600942f9044bf4f4ec7f1815b186184e60a1b",
+    #"RootAccessed": "0x066d64fa7b2e352b9000a51c6b56f53128cce6e6",
+    #"CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
     "sakuralover": "0x169527179bbc4bd99288585fc39eb0e117bf2842",
     "aussietoken": "0x2589876f7934d8b9ed551e911e1b50dabbcc6868",
     # "George.Smiley": "0x2110ba2a1e18840109482ff4ddc547baeff45850",
