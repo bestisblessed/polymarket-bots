@@ -65,6 +65,8 @@ One-off scripts in `utils/` for various Polymarket tasks
 - **`utils/poly_data_get_user_balance.py`** - Gets total holdings value across all markets for a user wallet address.
 - **`utils/poly_data_get_user_activity.py`** - Fetches user activity with pagination.
 	- Writes timestamped JSON under `data/user-activity/`.
+- **`utils/poly_data_get_user_success_rate.py`** - Calculates profile-visible Closed-tab hit rate, API final-outcome audit, and PnL/trading result from a wallet, username, `@username`, or Polymarket profile URL.
+	- Example: `python utils/poly_data_get_user_success_rate.py aussietoken`
 - **`utils/poly_data_get_event_markets_and_holders.py`** - Lists markets for an event slug with top holders.
 - **`utils/poly_data_get_user_positions_v1.py`** - Current positions using raw API requests.
 - **`utils/poly_data_get_user_positions_v2.py`** - Current positions with P&L and risk metadata.
