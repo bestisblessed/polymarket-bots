@@ -69,7 +69,7 @@ WHALES = {
     #"CoffeeOverCode": "0xf0badb774d036601892ac751d1a25d8492dfe4cb",
     "sakuralover": "0x169527179bbc4bd99288585fc39eb0e117bf2842",
     "aussietoken": "0x2589876f7934d8b9ed551e911e1b50dabbcc6868",
-    # "George.Smiley": "0x2110ba2a1e18840109482ff4ddc547baeff45850",
+    "George.Smiley": "0x2110ba2a1e18840109482ff4ddc547baeff45850",
 }
 API_URL = "https://data-api.polymarket.com/activity"
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
