@@ -1,0 +1,101 @@
+rank,category,market_title,outcome,side,trade_count,total_usdc_size,first_datetime_utc,last_datetime_utc,unique_transactions,market_slug
+1,geopolitics,"Will the US next strike Iran on February 28, 2026 (ET)?",No,BUY,1325,111152.549682,2026-01-28T14:18:43+00:00,2026-02-28T07:16:01+00:00,1213,will-the-us-next-strike-iran-on-february-28-2026-et
+2,geopolitics,"Will the US next strike Iran on February 27, 2026 (ET)?",No,BUY,1030,89565.701662,2026-01-28T14:18:43+00:00,2026-03-02T05:04:55+00:00,987,will-the-us-next-strike-iran-on-february-27-2026-et
+3,geopolitics,Will Muhammad Mirbaqiri be the next Supreme Leader of Iran?,No,BUY,760,84834.295164,2026-02-28T22:18:23+00:00,2026-03-08T21:12:05+00:00,759,will-muhammad-mirbaqiri-be-the-next-supreme-leader-of-iran
+4,geopolitics,Will Sadegh Larijani be the next Supreme Leader of Iran?,No,BUY,775,84359.164422,2026-02-28T22:18:23+00:00,2026-03-08T21:13:43+00:00,768,will-sadegh-larijani-be-the-next-supreme-leader-of-iran
+5,geopolitics,Will there be no new Supreme Leader of Iran by June 30?,No,BUY,777,83368.405001,2026-02-28T22:18:23+00:00,2026-03-08T21:24:15+00:00,756,will-there-be-no-new-supreme-leader-of-iran-by-june-30
+6,geopolitics,Will Hassan Rouhani be the next Supreme Leader of Iran?,No,BUY,764,83174.622519,2026-02-28T22:18:23+00:00,2026-03-08T21:12:41+00:00,730,will-hassan-rouhani-be-the-next-supreme-leader-of-iran
+7,geopolitics,Will Ali Larijani be the next Supreme Leader of Iran?,No,BUY,754,82099.061392,2026-02-28T23:48:03+00:00,2026-03-08T21:11:57+00:00,752,will-ali-larijani-be-the-next-supreme-leader-of-iran
+8,geopolitics,Will Gholam-Hossein Mohseni-Eje'i be the next Supreme Leader of Iran?,No,BUY,763,81282.890985,2026-03-01T00:45:23+00:00,2026-03-08T21:12:41+00:00,753,will-gholam-hossein-mohseni-ejei-be-the-next-supreme-leader-of-iran
+9,geopolitics,"US strikes Iran by February 28, 2026?",No,BUY,644,81189.197714,2026-01-29T16:26:34+00:00,2026-02-28T07:30:23+00:00,507,us-strikes-iran-by-february-28-2026-227-967-547-688-589-491-592-418-452-924-384-915-464-672-196-157-993-596-269-535-381-391-471-256-988-997-296-225-762-973-292-827-345-182-558-215-794-879-189-761
+10,geopolitics,Will Hashem Hosseini Bushehri be the next Supreme Leader of Iran?,No,BUY,695,80138.340039,2026-03-01T00:45:23+00:00,2026-03-08T21:07:33+00:00,695,will-hashem-hosseini-bushehri-be-the-next-supreme-leader-of-iran-911
+11,geopolitics,Will Reza Pahlavi be the next Supreme Leader of Iran?,No,BUY,655,79700.432534,2026-02-28T22:18:23+00:00,2026-03-08T21:08:33+00:00,655,will-reza-pahlavi-be-the-next-supreme-leader-of-iran
+12,geopolitics,Will Hassan Khomeini be the next Supreme Leader of Iran?,No,BUY,773,79627.046826,2026-02-28T22:18:23+00:00,2026-03-08T21:14:55+00:00,765,will-hassan-khomeini-be-the-next-supreme-leader-of-iran
+13,geopolitics,Will the position of Supreme Leader of Iran be abolished?,No,BUY,777,79554.555398,2026-02-28T22:18:23+00:00,2026-03-08T21:14:55+00:00,768,will-the-position-of-supreme-leader-of-iran-be-abolished
+14,geopolitics,"Will the US next strike Iran on February 26, 2026 (ET)?",No,BUY,949,75176.097373,2026-01-28T14:18:43+00:00,2026-03-04T09:20:31+00:00,938,will-the-us-next-strike-iran-on-february-26-2026-et
+15,geopolitics,Will Mohsen Araki be the next Supreme Leader of Iran?,No,BUY,583,73154.473216,2026-03-01T00:45:23+00:00,2026-03-08T19:20:53+00:00,583,will-mohsen-araki-be-the-next-supreme-leader-of-iran
+16,geopolitics,Will Alireza Arafi be the next Supreme Leader of Iran?,No,BUY,763,72090.437908,2026-03-01T00:45:23+00:00,2026-03-08T21:15:41+00:00,720,will-alireza-arafi-be-the-next-supreme-leader-of-iran-944
+17,geopolitics,"Will the US next strike Iran on February 25, 2026 (ET)?",No,BUY,928,69598.902902,2026-01-28T14:18:41+00:00,2026-02-25T12:34:38+00:00,923,will-the-us-next-strike-iran-on-february-25-2026-et
+18,geopolitics,"Will the US next strike Iran on February 20, 2026 (ET)?",No,BUY,1001,67702.414402,2026-01-28T14:18:41+00:00,2026-02-20T03:03:02+00:00,958,will-the-us-next-strike-iran-on-february-20-2026-et
+19,geopolitics,"Will the US next strike Iran on February 24, 2026 (ET)?",No,BUY,928,66893.847111,2026-01-28T14:18:43+00:00,2026-02-24T21:52:54+00:00,926,will-the-us-next-strike-iran-on-february-24-2026-et
+20,geopolitics,"Will the US next strike Iran on February 23, 2026 (ET)?",No,BUY,914,66050.279428,2026-01-28T14:18:43+00:00,2026-02-23T18:02:30+00:00,907,will-the-us-next-strike-iran-on-february-23-2026-et
+21,geopolitics,"Will the US next strike Iran on February 22, 2026 (ET)?",No,BUY,947,65098.788058,2026-01-28T14:18:41+00:00,2026-02-24T14:20:22+00:00,896,will-the-us-next-strike-iran-on-february-22-2026-et
+22,geopolitics,"US strikes Iran by February 27, 2026?",No,BUY,424,64952.888138,2026-02-16T21:28:27+00:00,2026-02-28T06:47:13+00:00,372,us-strikes-iran-by-february-27-2026
+23,other,Will Hyperliquid be accused of insider trading?,No,BUY,542,64638.40504,2026-02-23T18:53:50+00:00,2026-02-26T13:41:44+00:00,542,will-hyperliquid-be-accused-of-insider-trading
+24,other,Will Upbit be accused of insider trading?,No,BUY,542,63802.278108,2026-02-23T18:53:50+00:00,2026-02-26T13:41:42+00:00,541,will-company-c-be-accused-of-insider-trading
+25,other,Will World Liberty Financial be accused of insider trading?,No,BUY,550,63444.201938,2026-02-23T18:53:50+00:00,2026-02-26T13:26:50+00:00,546,will-world-liberty-financial-be-accused-of-insider-trading
+26,crypto,Will Binance be accused of insider trading?,No,BUY,549,63040.004768,2026-02-23T18:53:50+00:00,2026-02-26T13:41:28+00:00,547,will-binance-be-accused-of-insider-trading
+27,geopolitics,"Will the US next strike Iran on February 19, 2026 (ET)?",No,BUY,952,62854.633901,2026-01-28T14:18:43+00:00,2026-02-20T03:03:02+00:00,936,will-the-us-next-strike-iran-on-february-19-2026-et
+28,sports,Will Coinbase be accused of insider trading?,No,BUY,542,62813.109718,2026-02-23T18:53:50+00:00,2026-02-26T13:41:44+00:00,542,will-coinbase-be-accused-of-insider-trading
+29,other,Will Jupiter be accused of insider trading?,No,BUY,542,62742.3867,2026-02-23T18:53:50+00:00,2026-02-26T13:41:38+00:00,535,will-company-a-be-accused-of-insider-trading
+30,other,Will Bybit be accused of insider trading?,No,BUY,539,62501.664206,2026-02-23T18:53:50+00:00,2026-02-26T13:41:30+00:00,536,will-company-d-be-accused-of-insider-trading
+31,other,Will Wintermute be accused of insider trading?,No,BUY,534,61968.123381,2026-02-23T18:53:50+00:00,2026-02-26T13:41:30+00:00,532,will-wintermute-be-accused-of-insider-trading
+32,other,Will Dexscreener be accused of insider trading?,No,BUY,446,61742.135023,2026-02-24T02:35:50+00:00,2026-02-26T13:41:28+00:00,446,will-company-g-be-accused-of-insider-trading
+33,other,Will MEXC be accused of insider trading?,No,BUY,549,61431.075271,2026-02-23T20:01:10+00:00,2026-02-26T13:41:30+00:00,547,will-company-e-be-accused-of-insider-trading
+34,geopolitics,"Will Donald Trump visit China on May 15, 2026?",No,BUY,580,60376.481529,2026-04-28T10:07:10+00:00,2026-05-12T11:41:42+00:00,574,will-donald-trump-visit-china-on-may-15-2026
+35,geopolitics,"Will Donald Trump visit China on May 12, 2026?",No,BUY,419,60240.755305,2026-04-28T10:07:10+00:00,2026-05-12T16:35:02+00:00,419,will-donald-trump-visit-china-on-may-12-2026
+36,other,Will Pump.fun be accused of insider trading?,No,BUY,553,59226.551436,2026-02-23T18:53:50+00:00,2026-02-26T13:41:46+00:00,521,will-pumpfun-be-accused-of-insider-trading
+37,other,Will Moonshot be accused of insider trading?,No,BUY,358,58869.880344,2026-02-25T07:05:58+00:00,2026-02-26T13:41:28+00:00,358,will-company-n-be-accused-of-insider-trading
+38,other,Will Robinhood be accused of insider trading?,No,BUY,388,58366.704934,2026-02-24T21:41:12+00:00,2026-02-26T13:41:28+00:00,386,will-company-k-be-accused-of-insider-trading
+39,geopolitics,"Will the US next strike Iran on February 21, 2026 (ET)?",No,BUY,921,58189.083995,2026-01-28T14:18:43+00:00,2026-02-21T21:38:18+00:00,892,will-the-us-next-strike-iran-on-february-21-2026-et
+40,other,Will Gemini be accused of insider trading?,No,BUY,364,58165.749866,2026-02-25T00:11:40+00:00,2026-02-26T13:36:08+00:00,364,will-company-m-be-accused-of-insider-trading
+41,other,Will OKX be accused of insider trading?,No,BUY,349,57749.572188,2026-02-24T21:41:12+00:00,2026-02-26T13:34:16+00:00,349,will-company-j-be-accused-of-insider-trading
+42,politics/elections,Will Roberto Sánchez Palomino win the 2026 Peruvian presidential election?,No,BUY,670,56852.595709,2026-03-09T04:14:25+00:00,2026-06-19T04:00:19+00:00,508,will-roberto-snchez-palomino-win-the-2026-peruvian-presidential-election
+43,geopolitics,Will Trump visit China by May 15?,Yes,BUY,592,55904.229237,2026-04-29T20:31:42+00:00,2026-05-12T15:22:09+00:00,570,will-trump-visit-china-by-may-15-835-774-595
+44,geopolitics,"Will Donald Trump visit China on May 11, 2026?",No,BUY,139,55795.493152,2026-04-28T10:07:10+00:00,2026-05-11T22:41:07+00:00,139,will-donald-trump-visit-china-on-may-11-2026
+45,geopolitics,"Will the US next strike Iran on February 18, 2026 (ET)?",No,BUY,882,55625.059047,2026-01-28T14:18:43+00:00,2026-02-19T02:16:14+00:00,877,will-the-us-next-strike-iran-on-february-18-2026-et
+46,geopolitics,"US x Iran diplomatic meeting by June 30, 2026?",Yes,BUY,585,53043.554418,2026-04-29T22:20:50+00:00,2026-06-20T19:00:56+00:00,513,us-x-iran-diplomatic-meeting-by-june-30-2026-983-259-948-431-294-182-296-883-134-598-264
+47,geopolitics,Iran x Israel/US conflict ends by April 15?,Yes,BUY,435,52922.068059,2026-04-12T13:23:31+00:00,2026-04-21T17:17:04+00:00,416,iran-x-israelus-conflict-ends-by-april-15-618-586-982
+48,geopolitics,"Will the US next strike Iran on February 10, 2026 (ET)?",No,BUY,657,52017.060413,2026-01-28T14:18:43+00:00,2026-02-11T08:26:15+00:00,654,will-the-us-next-strike-iran-on-february-10-2026-et
+49,tech/ai,SpaceX IPO closing market cap above $3T?,No,BUY,467,51557.192422,2026-05-13T08:20:37+00:00,2026-06-12T19:24:36+00:00,457,spacex-ipo-closing-market-cap-above-3t-337-436
+50,other,Will Axiom be accused of insider trading?,No,BUY,559,51262.628836,2026-02-23T18:53:50+00:00,2026-02-26T13:41:42+00:00,498,will-axiom-be-accused-of-insider-trading
+51,crypto,Will Ethena be accused of insider trading?,No,BUY,436,51262.562207,2026-02-23T18:53:50+00:00,2026-02-26T13:38:56+00:00,436,will-ethena-be-accused-of-insider-trading
+52,geopolitics,"Will the US next strike Iran on February 14, 2026 (ET)?",No,BUY,807,50948.311299,2026-01-28T14:18:43+00:00,2026-02-15T06:45:23+00:00,798,will-the-us-next-strike-iran-on-february-14-2026-et
+53,geopolitics,"Will the US next strike Iran on February 12, 2026 (ET)?",No,BUY,654,50849.850364,2026-01-28T14:18:43+00:00,2026-02-13T02:55:25+00:00,650,will-the-us-next-strike-iran-on-february-12-2026-et
+54,geopolitics,"Will the US next strike Iran on February 17, 2026 (ET)?",No,BUY,821,50333.593638,2026-01-28T14:18:41+00:00,2026-02-18T21:34:36+00:00,820,will-the-us-next-strike-iran-on-february-17-2026-et
+55,other,Will Grayscale be accused of insider trading?,No,BUY,402,50088.463135,2026-02-23T18:53:50+00:00,2026-02-26T13:39:20+00:00,402,will-grayscale-be-accused-of-insider-trading
+56,geopolitics,"Will the US next strike Iran on February 11, 2026 (ET)?",No,BUY,643,50009.568559,2026-01-28T14:18:43+00:00,2026-02-12T03:40:53+00:00,643,will-the-us-next-strike-iran-on-february-11-2026-et
+57,geopolitics,"Will the US next strike Iran on February 13, 2026 (ET)?",No,BUY,659,49828.457007,2026-01-28T14:18:43+00:00,2026-02-14T02:15:27+00:00,643,will-the-us-next-strike-iran-on-february-13-2026-et
+58,crypto,Will Tether be accused of insider trading?,No,BUY,411,49138.815577,2026-02-23T18:53:50+00:00,2026-02-26T13:36:02+00:00,411,will-tether-be-accused-of-insider-trading
+59,other,Will another company be accused of insider trading?,No,BUY,324,49041.920201,2026-02-25T16:42:00+00:00,2026-02-26T13:46:56+00:00,315,will-another-company-be-accused-of-insider-trading
+60,geopolitics,"Will the US next strike Iran on February 16, 2026 (ET)?",No,BUY,784,48553.795599,2026-01-28T14:18:43+00:00,2026-02-16T23:13:51+00:00,784,will-the-us-next-strike-iran-on-february-16-2026-et
+61,geopolitics,"Will the US next strike Iran on February 15, 2026 (ET)?",No,BUY,790,48258.135481,2026-01-28T14:18:43+00:00,2026-02-15T06:45:25+00:00,779,will-the-us-next-strike-iran-on-february-15-2026-et
+62,geopolitics,"Will Donald Trump visit China on May 14, 2026?",No,BUY,633,47756.748425,2026-04-28T10:07:10+00:00,2026-05-12T15:22:11+00:00,586,will-donald-trump-visit-china-on-may-14-2026
+63,politics/elections,Will Alfonso López Chau win the 2026 Peruvian presidential election?,No,BUY,94,47553.824994,2026-03-09T04:14:25+00:00,2026-05-08T16:46:29+00:00,89,will-alfonso-lpez-chau-win-the-2026-peruvian-presidential-election
+64,geopolitics,Iran x Israel/US conflict ends by April 7?,Yes,BUY,360,46754.608189,2026-04-14T21:34:48+00:00,2026-04-20T23:37:34+00:00,279,iran-x-israelus-conflict-ends-by-april-7-346
+65,other,Will Kraken be accused of insider trading?,No,BUY,259,46050.359939,2026-02-24T21:41:12+00:00,2026-02-26T13:30:26+00:00,259,will-company-l-be-accused-of-insider-trading
+66,other,Will Meteora be accused of insider trading?,No,BUY,561,45737.569551,2026-02-23T18:53:50+00:00,2026-02-26T13:41:28+00:00,515,will-company-b-be-accused-of-insider-trading
+67,geopolitics,Will Mojtaba Khamenei be the next Supreme Leader of Iran?,No,BUY,791,44352.725034,2026-02-28T22:18:23+00:00,2026-03-08T21:14:55+00:00,659,will-mojtaba-khamenei-be-the-next-supreme-leader-of-iran-573
+68,tech/ai,Will SpaceX's market cap be between $1.0T and $1.5T at market close on IPO day?,No,BUY,296,43960.312517,2026-03-29T19:19:16+00:00,2026-06-12T15:56:06+00:00,281,will-spacexs-market-cap-be-between-1pt0t-and-1pt5t-at-market-close-on-ipo-day
+69,geopolitics,Will Masoud Pezeshkian be the next Supreme Leader of Iran?,No,BUY,296,42466.284686,2026-02-28T22:18:23+00:00,2026-03-08T20:53:25+00:00,296,will-masoud-pezeshkian-be-the-next-supreme-leader-of-iran
+70,other,Will AAVE be accused of insider trading?,No,BUY,376,41270.478454,2026-02-23T18:53:50+00:00,2026-02-26T13:02:16+00:00,376,will-aave-be-accused-of-insider-trading
+71,politics/elections,Will Ricardo Belmont win the 2026 Peruvian presidential election?,No,BUY,161,40297.235326,2026-03-09T04:14:27+00:00,2026-04-28T13:30:44+00:00,151,will-ricardo-belmont-win-the-2026-peruvian-presidential-election
+72,politics/elections,Will Rafael López Aliaga win the 2026 Peruvian presidential election?,No,BUY,517,39990.765733,2026-03-09T04:14:25+00:00,2026-06-05T17:16:04+00:00,461,will-rafael-lpez-aliaga-win-the-2026-peruvian-presidential-election
+73,sports,Will OpenSea be accused of insider trading?,No,BUY,347,39824.637677,2026-02-23T18:53:50+00:00,2026-02-26T13:17:08+00:00,347,will-opensea-be-accused-of-insider-trading
+74,geopolitics,"Will the US next strike Iran on February 7, 2026 (ET)?",No,BUY,546,39200.050294,2026-01-28T14:18:43+00:00,2026-02-09T21:05:23+00:00,528,will-the-us-next-strike-iran-on-february-7-2026-et
+75,geopolitics,"Will the US next strike Iran on February 8, 2026 (ET)?",No,BUY,550,38267.625043,2026-01-28T14:18:41+00:00,2026-02-09T07:42:59+00:00,535,will-the-us-next-strike-iran-on-february-8-2026-et
+76,other,Will Helius be accused of insider trading?,No,BUY,255,38227.136174,2026-02-24T02:35:50+00:00,2026-02-26T13:39:56+00:00,255,will-company-h-be-accused-of-insider-trading
+77,politics/elections,Will Keiko Fujimori win the 2026 Peruvian presidential election?,Yes,SELL,538,38154.69403,2026-04-05T05:11:49+00:00,2026-06-10T20:01:54+00:00,538,will-keiko-fujimori-win-the-2026-peruvian-presidential-election
+78,geopolitics,"Will the US next strike Iran on February 9, 2026 (ET)?",No,BUY,546,37717.962575,2026-01-28T14:18:41+00:00,2026-02-09T23:38:45+00:00,536,will-the-us-next-strike-iran-on-february-9-2026-et
+79,geopolitics,Will Mohsen Qomi be the next Supreme Leader of Iran?,No,BUY,160,37498.314242,2026-03-01T00:45:23+00:00,2026-03-07T23:29:01+00:00,160,will-mohsen-qomi-be-the-next-supreme-leader-of-iran
+80,geopolitics,Will Mohammad Khatami be the next Supreme Leader of Iran?,No,BUY,273,37429.657661,2026-02-28T22:18:23+00:00,2026-03-08T20:04:25+00:00,273,will-mohammad-khatami-be-the-next-supreme-leader-of-iran
+81,geopolitics,Iran x Israel/US conflict ends by April 15?,Yes,SELL,207,37072.84858,2026-04-14T00:23:35+00:00,2026-04-19T22:35:58+00:00,207,iran-x-israelus-conflict-ends-by-april-15-618-586-982
+82,politics/elections,Will Keiko Fujimori finish in second place in the first round of the 2026 Peruvian presidential election?,No,BUY,95,36821.502513,2026-04-07T17:51:23+00:00,2026-04-27T04:24:48+00:00,94,will-keiko-fujimori-finish-in-second-place-in-the-first-round-of-the-2026-peruvian-presidential-election
+83,tech/ai,Will SpaceX's market cap be between $1.5T and $2.0T at market close on IPO day?,No,BUY,321,36007.540001,2026-03-29T19:19:16+00:00,2026-06-12T17:45:13+00:00,303,will-spacexs-market-cap-be-between-1pt5t-and-2pt0t-at-market-close-on-ipo-day
+84,other,Will Jito be accused of insider trading?,No,BUY,263,35789.868255,2026-02-24T02:35:50+00:00,2026-02-26T13:46:18+00:00,263,will-company-f-be-accused-of-insider-trading
+85,sports,Will Germany vs. Curaçao end in a draw?,No,BUY,140,34349.846184,2026-06-12T04:49:55+00:00,2026-06-14T18:29:37+00:00,135,fifwc-ger-kor-2026-06-14-draw
+86,other,Will Flashbots be accused of insider trading?,No,BUY,291,34081.504224,2026-02-23T18:53:50+00:00,2026-02-26T10:33:36+00:00,291,will-flashbots-be-accused-of-insider-trading
+87,geopolitics,"Will the US not strike Iran by January 31, 2026?",Yes,SELL,391,33950.446,2026-01-13T07:24:25+00:00,2026-02-01T09:40:38+00:00,391,will-the-us-not-strike-iran-by-january-31-2026-314
+88,other,Will Base be accused of insider trading?,No,BUY,254,33805.438704,2026-02-24T02:35:50+00:00,2026-02-26T12:47:36+00:00,254,will-company-i-be-accused-of-insider-trading
+89,geopolitics,"Will the US next strike Iran on February 28, 2026 (ET)?",No,SELL,200,33611.62924,2026-02-03T03:18:42+00:00,2026-02-28T05:33:47+00:00,200,will-the-us-next-strike-iran-on-february-28-2026-et
+90,sports,Will Curaçao win on 2026-06-14?,No,BUY,43,32792.753468,2026-06-12T04:49:55+00:00,2026-06-14T17:51:48+00:00,43,fifwc-ger-kor-2026-06-14-kor
+91,politics/elections,Will Jorge Nieto win the 2026 Peruvian presidential election?,No,BUY,167,32547.624787,2026-03-09T04:14:27+00:00,2026-04-21T19:27:46+00:00,158,will-jorge-nieto-win-the-2026-peruvian-presidential-election
+92,geopolitics,"Will the US next strike Iran on February 6, 2026 (ET)?",No,BUY,449,30714.793302,2026-01-27T21:53:53+00:00,2026-02-07T06:00:29+00:00,440,will-the-us-next-strike-iran-on-february-6-2026-et
+93,geopolitics,Will Ali Asghar Hejazi be the next Supreme Leader of Iran?,No,BUY,110,30598.119606,2026-03-01T21:09:51+00:00,2026-03-08T11:02:01+00:00,110,will-ali-asghar-hejazi-be-the-next-supreme-leader-of-iran
+94,geopolitics,"US strikes Iran by February 13, 2026?",No,BUY,508,30558.233429,2026-01-28T22:35:50+00:00,2026-02-12T13:12:47+00:00,478,us-strikes-iran-by-february-13-2026-721-759-497-124-197-797-992-641-418-789-676-262-791-574-169-647-275-931
+95,geopolitics,"US x Iran diplomatic meeting by June 30, 2026?",Yes,SELL,250,30511.86265,2026-05-04T12:53:12+00:00,2026-06-20T15:24:43+00:00,250,us-x-iran-diplomatic-meeting-by-june-30-2026-983-259-948-431-294-182-296-883-134-598-264
+96,politics/elections,Will Carlos Álvarez win the 2026 Peruvian presidential election?,No,BUY,86,29583.363406,2026-03-09T04:14:25+00:00,2026-04-19T18:45:22+00:00,84,will-carlos-lvarez-win-the-2026-peruvian-presidential-election
+97,geopolitics,"US strikes Iran by February 9, 2026?",No,BUY,225,28925.992896,2026-02-04T23:06:31+00:00,2026-02-09T23:39:07+00:00,177,us-strikes-iran-by-february-9-2026-113-751
+98,geopolitics,"Will the US not strike Iran by February 28, 2026?",No,BUY,909,28252.779826,2026-01-28T15:23:47+00:00,2026-02-28T10:44:31+00:00,820,will-the-us-not-strike-iran-by-february-28-2026
+99,geopolitics,Will the next diplomatic US-Iran meeting be in Switzerland?,Yes,BUY,712,28167.842712,2026-06-04T18:44:30+00:00,2026-06-20T20:04:04+00:00,529,will-the-next-diplomatic-us-iran-meeting-be-in-switzerland-861
+100,geopolitics,Will the US next strike Iran before March 2026 (ET)?,Yes,BUY,653,27872.762944,2026-02-17T14:08:03+00:00,2026-02-28T09:05:17+00:00,606,will-the-us-next-strike-iran-before-march-2026-et

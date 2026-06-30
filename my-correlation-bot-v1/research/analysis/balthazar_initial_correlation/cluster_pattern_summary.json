@@ -1,0 +1,461 @@
+{
+  "side_outcome_top": [
+    {
+      "side": "BUY",
+      "outcome": "No",
+      "rows": 267994,
+      "usdc": 16874315.09512889,
+      "markets": 20838
+    },
+    {
+      "side": "BUY",
+      "outcome": "Yes",
+      "rows": 86389,
+      "usdc": 2403577.331833069,
+      "markets": 8433
+    },
+    {
+      "side": "SELL",
+      "outcome": "Yes",
+      "rows": 138271,
+      "usdc": 1400666.0350660996,
+      "markets": 11134
+    },
+    {
+      "side": "SELL",
+      "outcome": "No",
+      "rows": 17941,
+      "usdc": 872284.3224159775,
+      "markets": 1331
+    },
+    {
+      "side": "BUY",
+      "outcome": "Under",
+      "rows": 4561,
+      "usdc": 151566.4402749998,
+      "markets": 1042
+    },
+    {
+      "side": "BUY",
+      "outcome": "Over",
+      "rows": 3566,
+      "usdc": 139415.26886799998,
+      "markets": 1011
+    },
+    {
+      "side": "BUY",
+      "outcome": "Spurs",
+      "rows": 418,
+      "usdc": 14690.203202999997,
+      "markets": 128
+    },
+    {
+      "side": "SELL",
+      "outcome": "Over",
+      "rows": 311,
+      "usdc": 14210.171580000002,
+      "markets": 72
+    },
+    {
+      "side": "BUY",
+      "outcome": "Knicks",
+      "rows": 456,
+      "usdc": 11343.048869000006,
+      "markets": 122
+    },
+    {
+      "side": "SELL",
+      "outcome": "Under",
+      "rows": 165,
+      "usdc": 9252.857750000003,
+      "markets": 69
+    },
+    {
+      "side": "BUY",
+      "outcome": "Alexander Zverev",
+      "rows": 54,
+      "usdc": 5645.935728,
+      "markets": 1
+    },
+    {
+      "side": "BUY",
+      "outcome": "Japan",
+      "rows": 16,
+      "usdc": 4976.506498,
+      "markets": 5
+    }
+  ],
+  "seconds": {
+    "total_seconds_with_trades": 145368,
+    "seconds_ge_50_rows": 109,
+    "seconds_ge_100_rows": 3,
+    "max_rows_in_one_second": 112
+  },
+  "top_seconds": [
+    {
+      "second": "2026-02-25T16:59:06Z",
+      "rows": 112,
+      "usdc": 7023.862977000003,
+      "markets": 28,
+      "top_title": "Will Tether be accused of insider trading?"
+    },
+    {
+      "second": "2026-02-25T23:23:30Z",
+      "rows": 103,
+      "usdc": 17296.499488,
+      "markets": 27,
+      "top_title": "Will Upbit be accused of insider trading?"
+    },
+    {
+      "second": "2026-02-01T23:07:18Z",
+      "rows": 102,
+      "usdc": 4968.348504999998,
+      "markets": 32,
+      "top_title": "Will the US next strike Iran on February 9, 2026 (ET)?"
+    },
+    {
+      "second": "2026-04-20T18:21:32Z",
+      "rows": 96,
+      "usdc": 556.3704299999998,
+      "markets": 40,
+      "top_title": "Will Joao Fonseca win the 2026 Men's French Open?"
+    },
+    {
+      "second": "2026-02-01T23:07:16Z",
+      "rows": 89,
+      "usdc": 4181.159207999998,
+      "markets": 35,
+      "top_title": "Will the US next strike Iran on February 16, 2026 (ET)?"
+    },
+    {
+      "second": "2026-03-18T12:11:27Z",
+      "rows": 87,
+      "usdc": 1399.20623,
+      "markets": 29,
+      "top_title": "Will St. Mary's win the 2026 NCAA Tournament?"
+    },
+    {
+      "second": "2026-02-25T20:08:34Z",
+      "rows": 84,
+      "usdc": 16179.399926999995,
+      "markets": 28,
+      "top_title": "Will Binance be accused of insider trading?"
+    },
+    {
+      "second": "2026-02-25T16:47:54Z",
+      "rows": 84,
+      "usdc": 18874.399508,
+      "markets": 28,
+      "top_title": "Will MEXC be accused of insider trading?"
+    },
+    {
+      "second": "2026-03-03T18:54:49Z",
+      "rows": 82,
+      "usdc": 8110.443125999998,
+      "markets": 23,
+      "top_title": "Will Ahmad Vahidi be the next Supreme Leader of Iran?"
+    },
+    {
+      "second": "2026-02-25T07:05:58Z",
+      "rows": 81,
+      "usdc": 12981.039669999998,
+      "markets": 27,
+      "top_title": "Will Upbit be accused of insider trading?"
+    }
+  ],
+  "top_events": [
+    {
+      "event_slug": "us-next-strikes-iran-on-843",
+      "rows": 24938,
+      "usdc": 1601496.7119279816,
+      "markets": 30,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          21258
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          2921
+        ],
+        [
+          [
+            "SELL",
+            "No"
+          ],
+          534
+        ]
+      ],
+      "top_title": "Will the US next strike Iran on February 28, 2026 (ET)?"
+    },
+    {
+      "event_slug": "which-crypto-company-will-zachxbt-expose-for-insider-trading",
+      "rows": 15016,
+      "usdc": 1506387.5209029973,
+      "markets": 28,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          12085
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          2011
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          920
+        ]
+      ],
+      "top_title": "Will Meteora be accused of insider trading?"
+    },
+    {
+      "event_slug": "who-will-be-next-supreme-leader-of-iran-515",
+      "rows": 14116,
+      "usdc": 1399802.9969420002,
+      "markets": 40,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          11435
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          2256
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          425
+        ]
+      ],
+      "top_title": "Will Mojtaba Khamenei be the next Supreme Leader of Iran?"
+    },
+    {
+      "event_slug": "us-strikes-iran-by",
+      "rows": 10607,
+      "usdc": 645620.7425960012,
+      "markets": 44,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          4298
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          4083
+        ],
+        [
+          [
+            "SELL",
+            "No"
+          ],
+          1662
+        ]
+      ],
+      "top_title": "US strikes Iran by February 28, 2026?"
+    },
+    {
+      "event_slug": "military-action-against-iran-ends-on-127",
+      "rows": 2851,
+      "usdc": 516694.3571779974,
+      "markets": 26,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          2057
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          774
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          20
+        ]
+      ],
+      "top_title": "Military action against Iran ends on April 10, 2026?"
+    },
+    {
+      "event_slug": "peru-presidential-election-winner",
+      "rows": 6267,
+      "usdc": 468138.54362199747,
+      "markets": 23,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          2702
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          2387
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          1163
+        ]
+      ],
+      "top_title": "Will Roberto S\u00e1nchez Palomino win the 2026 Peruvian presidential election?"
+    },
+    {
+      "event_slug": "2026-ncaa-tournament-winner",
+      "rows": 4630,
+      "usdc": 423261.89693600155,
+      "markets": 44,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          4305
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          252
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          73
+        ]
+      ],
+      "top_title": "Will Connecticut win the 2026 NCAA Tournament?"
+    },
+    {
+      "event_slug": "us-next-strikes-iran-on",
+      "rows": 12776,
+      "usdc": 297046.9363429986,
+      "markets": 21,
+      "top_side_outcomes": [
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          9240
+        ],
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          1909
+        ],
+        [
+          [
+            "SELL",
+            "No"
+          ],
+          1138
+        ]
+      ],
+      "top_title": "Will the US next strike Iran on January 23, 2026 (ET)?"
+    },
+    {
+      "event_slug": "will-trump-visit-china-on",
+      "rows": 3061,
+      "usdc": 282386.53505699855,
+      "markets": 32,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          2776
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          285
+        ]
+      ],
+      "top_title": "Will Donald Trump visit China on May 13, 2026?"
+    },
+    {
+      "event_slug": "us-x-iran-diplomatic-meeting-by-329",
+      "rows": 3483,
+      "usdc": 233448.17785200002,
+      "markets": 27,
+      "top_side_outcomes": [
+        [
+          [
+            "BUY",
+            "No"
+          ],
+          1775
+        ],
+        [
+          [
+            "BUY",
+            "Yes"
+          ],
+          1243
+        ],
+        [
+          [
+            "SELL",
+            "Yes"
+          ],
+          388
+        ]
+      ],
+      "top_title": "US x Iran diplomatic meeting by June 30, 2026?"
+    }
+  ]
+}

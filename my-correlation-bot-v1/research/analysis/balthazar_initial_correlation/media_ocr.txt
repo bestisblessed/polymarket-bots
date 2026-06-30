@@ -1,0 +1,64 @@
+
+## 2061106958971633743_0_3_2061106825072701443.jpg
+day_of_week
+Mon
+Tue
+Wed
+Thu
+Fri
+Sat
+
+Sun
+
+total_gain
+36510
+32022
+38619
+27029
+33550
+27961
+
+33902
+
+## 2062510372255351040_0_3_2062509241609392128.jpg
+| Polymarket
+
+Tier Read budget Write budget
+Endpoint Burst Limit Sustained Limit
+Basic 200 100
+PosT /order 5,000 req / 10s 120,000 req / 10 min
+Advanced 300 300 DELETE /order 5,000 req/ 10s 120,000 req / 10 min
+PosT /orders 2,000 req / 10s 21,000 req / 10 min
+
+© Rate limit: 10 tokens per order in the batch — billed per item, so total cost
+
+for a batch of N orders is N x 10, Other endpoints cost 10 tokens per request DELETE orders 2,000 req/ 10s 15,000 req / 10 min
+(not per item) unless noted on their own page. See Rate Limits and Tiers.
+
+Everyone = 725 order/s + 75200 cancel/s
+
+(orders batch 15/req cancel batch 3000/req)
+
+Advanced = 20 order/s + 50 cancel/s
+
+## 2066565884986966116_0_3_2066565696734064640.jpg
+will-the-democratic-party-wit
++1951 - lag +0h - politic
+
+score +1.951 - nolag - tags: politics
+
+1000
+=*=*> will-the-democratic-party-win-the-va-06-house-seat bid
+—— will-the-democratic-party-win-the-va-06-house-seat ask
+~ will-a-province-schedule-a-referendum-to-leave-canada-before-2027 bid
+—— will-a-province-schedule-a-referendum-to-leave-canada-before-2027 ask
+800
+
+600
+
+price
+
+400
+
+## 2068710802077413606_0_3_2068710798914924544.jpg
+[no OCR text]

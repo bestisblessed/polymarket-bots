@@ -1,0 +1,747 @@
+{
+  "sources": {
+    "x_tweets": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/tweets_combined.json",
+    "polymarket_trades": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/trade_transactions_master.csv",
+    "market_summary": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/trade_transactions_market_summary.csv",
+    "closed_positions": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/closed_positions.csv"
+  },
+  "x": {
+    "tweet_count": 17,
+    "media_posts": 4,
+    "mechanics_tag_counts": {
+      "pnl/tracker": 4,
+      "tier/volume": 4,
+      "api/rate-limit": 2,
+      "correlation": 2,
+      "rebates/fees": 1,
+      "execution/ev": 1
+    }
+  },
+  "trades": {
+    "rows": 524283,
+    "oldest": "2025-02-07T19:57:10+00:00",
+    "newest": "2026-06-25T09:54:46+00:00",
+    "unique_transactions": 499512,
+    "unique_markets": 28519,
+    "side_counts": {
+      "BUY": 367150,
+      "SELL": 157133
+    },
+    "amount_usdc_quantiles": {
+      "min": 1e-05,
+      "p25": 1.7783799999999998,
+      "median": 13.017739,
+      "p75": 48.85,
+      "p90": 99.79999999999998,
+      "p99": 340.0,
+      "max": 18735.5538
+    },
+    "gap_seconds_quantiles": {
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 52.0,
+      "p99": 620.0
+    },
+    "share_adjacent_trades_same_second": 0.7353142011360299,
+    "share_adjacent_trades_under_5s": 0.7961650409512437,
+    "category_counts_top": {
+      "geopolitics": 120135,
+      "other": 101524,
+      "politics/elections": 72997,
+      "sports": 70097,
+      "weather": 59160,
+      "tech/ai": 32289,
+      "crypto": 24815,
+      "culture/news": 24170,
+      "finance/macro": 19096
+    },
+    "category_usdc_top": {
+      "geopolitics": 7172181.751461593,
+      "other": 4623878.60205601,
+      "politics/elections": 3358024.2604940194,
+      "sports": 2458625.7855200027,
+      "tech/ai": 1389685.2355000144,
+      "culture/news": 1029940.3620580113,
+      "crypto": 858109.4697580028,
+      "finance/macro": 656335.7967070038,
+      "weather": 452774.513377005
+    },
+    "top_days_by_trade_count": [
+      {
+        "date": "2026-05-31",
+        "trade_count": 10584,
+        "usdc_size": 147389.37
+      },
+      {
+        "date": "2026-06-11",
+        "trade_count": 10490,
+        "usdc_size": 287773.67
+      },
+      {
+        "date": "2026-06-23",
+        "trade_count": 10262,
+        "usdc_size": 303289.34
+      },
+      {
+        "date": "2026-06-14",
+        "trade_count": 10079,
+        "usdc_size": 409991.84
+      },
+      {
+        "date": "2026-06-24",
+        "trade_count": 9225,
+        "usdc_size": 264203.26
+      },
+      {
+        "date": "2026-06-12",
+        "trade_count": 9030,
+        "usdc_size": 375948.87
+      },
+      {
+        "date": "2026-06-17",
+        "trade_count": 8934,
+        "usdc_size": 198544.75
+      },
+      {
+        "date": "2026-06-19",
+        "trade_count": 8900,
+        "usdc_size": 208647.26
+      },
+      {
+        "date": "2026-05-29",
+        "trade_count": 8271,
+        "usdc_size": 146202.69
+      },
+      {
+        "date": "2026-06-18",
+        "trade_count": 8169,
+        "usdc_size": 177514.86
+      },
+      {
+        "date": "2026-06-20",
+        "trade_count": 7964,
+        "usdc_size": 241429.8
+      },
+      {
+        "date": "2026-06-15",
+        "trade_count": 7257,
+        "usdc_size": 268755.51
+      },
+      {
+        "date": "2026-06-21",
+        "trade_count": 7240,
+        "usdc_size": 227406.39
+      },
+      {
+        "date": "2026-06-13",
+        "trade_count": 7232,
+        "usdc_size": 235287.02
+      },
+      {
+        "date": "2026-03-08",
+        "trade_count": 7077,
+        "usdc_size": 350551.98
+      }
+    ],
+    "top_hours_by_trade_count": [
+      {
+        "hour": "2026-05-31T15:00:00Z",
+        "trade_count": 1908,
+        "usdc_size": 20929.83
+      },
+      {
+        "hour": "2026-03-08T21:00:00Z",
+        "trade_count": 1871,
+        "usdc_size": 98281.55
+      },
+      {
+        "hour": "2026-03-03T20:00:00Z",
+        "trade_count": 1555,
+        "usdc_size": 162935.35
+      },
+      {
+        "hour": "2026-04-20T18:00:00Z",
+        "trade_count": 1264,
+        "usdc_size": 27659.24
+      },
+      {
+        "hour": "2026-03-03T19:00:00Z",
+        "trade_count": 1187,
+        "usdc_size": 108397.92
+      },
+      {
+        "hour": "2026-06-23T00:00:00Z",
+        "trade_count": 1143,
+        "usdc_size": 30304.16
+      },
+      {
+        "hour": "2026-02-28T06:00:00Z",
+        "trade_count": 1138,
+        "usdc_size": 75258.3
+      },
+      {
+        "hour": "2026-02-25T17:00:00Z",
+        "trade_count": 1077,
+        "usdc_size": 158448.8
+      },
+      {
+        "hour": "2026-01-25T02:00:00Z",
+        "trade_count": 1072,
+        "usdc_size": 21773.13
+      },
+      {
+        "hour": "2026-02-08T23:00:00Z",
+        "trade_count": 1055,
+        "usdc_size": 119916.93
+      },
+      {
+        "hour": "2026-02-25T07:00:00Z",
+        "trade_count": 1043,
+        "usdc_size": 74998.34
+      },
+      {
+        "hour": "2026-02-26T11:00:00Z",
+        "trade_count": 1011,
+        "usdc_size": 125146.07
+      },
+      {
+        "hour": "2026-01-20T07:00:00Z",
+        "trade_count": 1003,
+        "usdc_size": 21791.75
+      },
+      {
+        "hour": "2026-05-29T15:00:00Z",
+        "trade_count": 999,
+        "usdc_size": 16273.2
+      },
+      {
+        "hour": "2026-05-29T14:00:00Z",
+        "trade_count": 983,
+        "usdc_size": 17249.59
+      }
+    ],
+    "top_minutes_by_trade_count": [
+      {
+        "minute": "2026-02-26T13:41:00Z",
+        "trade_count": 416,
+        "usdc_size": 15145.64
+      },
+      {
+        "minute": "2026-03-08T21:07:00Z",
+        "trade_count": 404,
+        "usdc_size": 32383.0
+      },
+      {
+        "minute": "2026-03-08T21:08:00Z",
+        "trade_count": 392,
+        "usdc_size": 26027.95
+      },
+      {
+        "minute": "2026-03-08T21:09:00Z",
+        "trade_count": 338,
+        "usdc_size": 17131.26
+      },
+      {
+        "minute": "2026-06-09T13:48:00Z",
+        "trade_count": 327,
+        "usdc_size": 483.87
+      },
+      {
+        "minute": "2026-03-03T18:55:00Z",
+        "trade_count": 310,
+        "usdc_size": 40766.08
+      },
+      {
+        "minute": "2026-02-25T23:23:00Z",
+        "trade_count": 303,
+        "usdc_size": 51941.09
+      },
+      {
+        "minute": "2026-02-01T23:07:00Z",
+        "trade_count": 264,
+        "usdc_size": 12694.16
+      },
+      {
+        "minute": "2026-02-25T16:59:00Z",
+        "trade_count": 237,
+        "usdc_size": 19663.77
+      },
+      {
+        "minute": "2026-02-25T17:20:00Z",
+        "trade_count": 232,
+        "usdc_size": 27726.48
+      },
+      {
+        "minute": "2026-03-03T19:39:00Z",
+        "trade_count": 221,
+        "usdc_size": 18573.41
+      },
+      {
+        "minute": "2026-02-24T03:32:00Z",
+        "trade_count": 210,
+        "usdc_size": 16322.36
+      },
+      {
+        "minute": "2026-04-20T18:21:00Z",
+        "trade_count": 201,
+        "usdc_size": 1560.84
+      },
+      {
+        "minute": "2026-04-26T11:55:00Z",
+        "trade_count": 200,
+        "usdc_size": 2586.54
+      },
+      {
+        "minute": "2026-02-26T04:26:00Z",
+        "trade_count": 198,
+        "usdc_size": 1644.18
+      }
+    ]
+  },
+  "tweet_windows": {
+    "rows": 136,
+    "file": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/analysis/balthazar_initial_correlation/tweet_trade_windows.csv",
+    "notable_after_6h_by_usdc": [
+      {
+        "tweet_id": "2066216447680930016",
+        "tweet_created_at": "2026-06-14T17:49:24+00:00",
+        "tweet_text": "@PolymarketDevs Taker rebates please\ud83d\ude4f",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066216447680930016",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 2445,
+        "total_usdc_size": 129302.226655,
+        "unique_markets": 689,
+        "unique_transactions": 2290,
+        "buy_count": 1862,
+        "sell_count": 583,
+        "top_categories": "geopolitics:723; sports:712; weather:293; crypto:232; other:228",
+        "top_markets_by_usdc": "Will Germany vs. Cura\u00e7ao end in a draw? / No / BUY ($6,042) | US x Iran permanent peace deal by July 31, 2026? / Yes / BUY ($5,794) | US announces new Iran agreement/ceasefire extension by June 15? / Yes / BUY ($5,541) | Will Japan win on 2026-06-14? / No / BUY ($5,187) | Will Netherlands vs. Japan end in a draw? / No / BUY ($3,964)"
+      },
+      {
+        "tweet_id": "2065087696419065883",
+        "tweet_created_at": "2026-06-11T15:04:08+00:00",
+        "tweet_text": "@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade Higher \ud83d\udcc8 DMed",
+        "tweet_url": "https://x.com/balthazarpoly/status/2065087696419065883",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 2945,
+        "total_usdc_size": 101201.747575,
+        "unique_markets": 702,
+        "unique_transactions": 2771,
+        "buy_count": 1852,
+        "sell_count": 1093,
+        "top_categories": "geopolitics:633; weather:627; sports:506; other:497; tech/ai:366",
+        "top_markets_by_usdc": "Will SpaceX's market cap be between $1.0T and $1.5T at market close on IPO day? / No / BUY ($6,814) | Will SpaceX's market cap be between $1.5T and $2.0T at market close on IPO day? / No / BUY ($4,838) | SpaceX IPO closing market cap above $1T? / Yes / BUY ($4,727) | Israel closes its airspace by June 14? / No / BUY ($3,473) | Will Team Spirit win IEM Cologne Major 2026? / No / BUY ($1,931)"
+      },
+      {
+        "tweet_id": "2064353199344042388",
+        "tweet_created_at": "2026-06-09T14:25:31+00:00",
+        "tweet_text": "@nicoco89poly @Polymarket @MatthewModabber \ud83d\udc10",
+        "tweet_url": "https://x.com/balthazarpoly/status/2064353199344042388",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 2030,
+        "total_usdc_size": 89455.491758,
+        "unique_markets": 591,
+        "unique_transactions": 1926,
+        "buy_count": 1353,
+        "sell_count": 677,
+        "top_categories": "weather:538; tech/ai:533; geopolitics:220; sports:220; other:195",
+        "top_markets_by_usdc": "Will a Claude Mythos model be released by June 10, 2026? / Yes / BUY ($5,317) | Will Claude Mythos be released on June 10? / No / BUY ($5,219) | Bab el-Mandeb Strait effectively closed by June 15? / No / BUY ($2,359) | Will the price of Bitcoin be above $58,000 on June 10? / Yes / BUY ($1,862) | Will Gold (GC) hit (HIGH) $5,300 by end of June? / No / BUY ($1,823)"
+      },
+      {
+        "tweet_id": "2066565884986966116",
+        "tweet_created_at": "2026-06-15T16:57:56+00:00",
+        "tweet_text": "@MonteCarloSpam Correlations are the best https://t.co/BlEuMqkuon",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066565884986966116",
+        "tweet_media_count": 1,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 2079,
+        "total_usdc_size": 86613.012695,
+        "unique_markets": 606,
+        "unique_transactions": 1972,
+        "buy_count": 1525,
+        "sell_count": 554,
+        "top_categories": "sports:890; weather:351; geopolitics:326; other:211; tech/ai:115",
+        "top_markets_by_usdc": "Will Spain win on 2026-06-15? / No / BUY ($8,978) | Will Cabo Verde win on 2026-06-15? / No / BUY ($6,628) | Will Egypt win on 2026-06-15? / No / BUY ($3,991) | Will Spain vs. Cabo Verde end in a draw? / No / BUY ($3,861) | Will Belgium win on 2026-06-15? / No / BUY ($3,767)"
+      },
+      {
+        "tweet_id": "2066605465471995970",
+        "tweet_created_at": "2026-06-15T19:35:13+00:00",
+        "tweet_text": "@MonteCarloSpam Is Oprah long or short war?",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066605465471995970",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 1812,
+        "total_usdc_size": 81665.894531,
+        "unique_markets": 617,
+        "unique_transactions": 1722,
+        "buy_count": 1376,
+        "sell_count": 436,
+        "top_categories": "geopolitics:474; weather:408; sports:300; other:278; tech/ai:146",
+        "top_markets_by_usdc": "Will Uruguay win on 2026-06-15? / No / BUY ($9,551) | Will Saudi Arabia vs. Uruguay end in a draw? / No / BUY ($7,535) | Will Saudi Arabia win on 2026-06-15? / No / BUY ($4,210) | Will Egypt win on 2026-06-15? / No / BUY ($3,945) | Will Belgium win on 2026-06-15? / No / BUY ($3,767)"
+      },
+      {
+        "tweet_id": "2068710802077413606",
+        "tweet_created_at": "2026-06-21T15:01:04+00:00",
+        "tweet_text": "@MonteCarloSpam tfw 4k ev fill https://t.co/T8UunlcW8A",
+        "tweet_url": "https://x.com/balthazarpoly/status/2068710802077413606",
+        "tweet_media_count": 1,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 2051,
+        "total_usdc_size": 74637.120807,
+        "unique_markets": 584,
+        "unique_transactions": 1977,
+        "buy_count": 1327,
+        "sell_count": 724,
+        "top_categories": "geopolitics:620; other:478; sports:308; politics/elections:252; weather:237",
+        "top_markets_by_usdc": "Exact Score: Belgium 0 - 0 IR Iran? / No / BUY ($4,056) | Belgium vs. IR Iran: O/U 0.5 / Under / BUY ($2,491) | Exact Score: Belgium 0 - 3 IR Iran? / No / BUY ($2,387) | Exact Score: Belgium 1 - 3 IR Iran? / No / BUY ($2,382) | Will the Fed decrease interest rates by 50+ bps after the July 2026 meeting? / No / BUY ($1,992)"
+      },
+      {
+        "tweet_id": "2063972865221738774",
+        "tweet_created_at": "2026-06-08T13:14:12+00:00",
+        "tweet_text": "road to plat",
+        "tweet_url": "https://x.com/balthazarpoly/status/2063972865221738774",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 1270,
+        "total_usdc_size": 60497.571159,
+        "unique_markets": 412,
+        "unique_transactions": 1182,
+        "buy_count": 983,
+        "sell_count": 287,
+        "top_categories": "weather:367; politics/elections:319; sports:215; crypto:189; other:101",
+        "top_markets_by_usdc": "Will S\u00e1nchez win the 2nd round of the 2026 Peru presidential election by 0\u20134%? / No / BUY ($2,673) | US x Iran permanent peace deal by June 15, 2026? / No / BUY ($1,843) | Will S\u00e1nchez win the 2nd round of the 2026 Peru presidential election by 4\u20138%? / No / BUY ($1,834) | Will Fujimori win the 2nd round of the 2026 Peru presidential election by 0\u20134%? / Yes / BUY ($1,324) | Will SpaceX's market cap be between $1.0T and $1.5T at market close on IPO day? / No / BUY ($1,203)"
+      },
+      {
+        "tweet_id": "2062282045229830294",
+        "tweet_created_at": "2026-06-03T21:15:29+00:00",
+        "tweet_text": "@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade I wish I had 940k PNL I wonder where these ridiculous figures come from",
+        "tweet_url": "https://x.com/balthazarpoly/status/2062282045229830294",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "after",
+        "trade_count": 1628,
+        "total_usdc_size": 43396.881339,
+        "unique_markets": 385,
+        "unique_transactions": 1397,
+        "buy_count": 1310,
+        "sell_count": 318,
+        "top_categories": "sports:901; weather:281; politics/elections:200; crypto:103; tech/ai:72",
+        "top_markets_by_usdc": "Will the San Antonio Spurs win the 2026 NBA Finals? / Yes / BUY ($4,400) | Will the New York Knicks win the 2026 NBA Finals? / Yes / BUY ($2,691) | Israel announces Lebanon ceasefire extension by June 30? / Yes / BUY ($1,178) | Will Victor Wembanyama win the 2026 NBA Finals MVP? / Yes / SELL ($894) | Will Jalen Brunson win the 2026 NBA Finals MVP? / No / BUY ($885)"
+      }
+    ],
+    "notable_before_6h_by_usdc": [
+      {
+        "tweet_id": "2066216447680930016",
+        "tweet_created_at": "2026-06-14T17:49:24+00:00",
+        "tweet_text": "@PolymarketDevs Taker rebates please\ud83d\ude4f",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066216447680930016",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 2943,
+        "total_usdc_size": 141310.389411,
+        "unique_markets": 669,
+        "unique_transactions": 2734,
+        "buy_count": 1738,
+        "sell_count": 1205,
+        "top_categories": "sports:1078; other:620; geopolitics:348; weather:346; crypto:249",
+        "top_markets_by_usdc": "Will Cura\u00e7ao win on 2026-06-14? / No / BUY ($28,940) | Will Germany vs. Cura\u00e7ao end in a draw? / No / BUY ($27,914) | Will Germany win on 2026-06-14? / No / BUY ($1,718) | Will Julian Alvarez be the top goalscorer at the 2026 FIFA World Cup? / No / BUY ($1,494) | Will Lautaro Martinez be the top goalscorer at the 2026 FIFA World Cup? / No / BUY ($1,479)"
+      },
+      {
+        "tweet_id": "2065205016336507071",
+        "tweet_created_at": "2026-06-11T22:50:20+00:00",
+        "tweet_text": "Combinatorial module is impressive. Wish the quotes were a bit more transparent like the books. But chain-knows-all! https://t.co/5PQ6rXyU7o",
+        "tweet_url": "https://x.com/balthazarpoly/status/2065205016336507071",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "quoted",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 3119,
+        "total_usdc_size": 97573.268751,
+        "unique_markets": 786,
+        "unique_transactions": 2925,
+        "buy_count": 1961,
+        "sell_count": 1158,
+        "top_categories": "weather:705; geopolitics:635; sports:610; other:566; tech/ai:343",
+        "top_markets_by_usdc": "Will SpaceX's market cap be between $1.0T and $1.5T at market close on IPO day? / No / BUY ($4,309) | Israel closes its airspace by June 14? / No / BUY ($3,473) | Will SpaceX's market cap be between $1.5T and $2.0T at market close on IPO day? / No / BUY ($3,036) | SpaceX IPO closing market cap above $1T? / Yes / BUY ($2,846) | Will Team Spirit win IEM Cologne Major 2026? / No / BUY ($2,078)"
+      },
+      {
+        "tweet_id": "2066605465471995970",
+        "tweet_created_at": "2026-06-15T19:35:13+00:00",
+        "tweet_text": "@MonteCarloSpam Is Oprah long or short war?",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066605465471995970",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 2349,
+        "total_usdc_size": 81561.272426,
+        "unique_markets": 672,
+        "unique_transactions": 2237,
+        "buy_count": 1673,
+        "sell_count": 676,
+        "top_categories": "sports:953; weather:347; geopolitics:280; other:238; crypto:235",
+        "top_markets_by_usdc": "Will Spain win on 2026-06-15? / No / BUY ($8,978) | Will Cabo Verde win on 2026-06-15? / No / BUY ($6,628) | Will Spain vs. Cabo Verde end in a draw? / No / BUY ($3,861) | Will Spain win on 2026-06-15? / Yes / SELL ($2,567) | Exact Score: Spain 0 - 0 Cabo Verde? / No / BUY ($1,837)"
+      },
+      {
+        "tweet_id": "2065087696419065883",
+        "tweet_created_at": "2026-06-11T15:04:08+00:00",
+        "tweet_text": "@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade Higher \ud83d\udcc8 DMed",
+        "tweet_url": "https://x.com/balthazarpoly/status/2065087696419065883",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 2254,
+        "total_usdc_size": 54429.636951,
+        "unique_markets": 677,
+        "unique_transactions": 2120,
+        "buy_count": 1375,
+        "sell_count": 879,
+        "top_categories": "weather:514; sports:418; other:410; geopolitics:264; politics/elections:243",
+        "top_markets_by_usdc": "Will the San Antonio Spurs win the 2026 NBA Finals? / No / BUY ($2,255) | Will the New York Knicks win the 2026 NBA Finals? / Yes / SELL ($2,035) | Will Fujimori win the 2nd round of the 2026 Peru presidential election by 0\u20130.1%? / No / BUY ($1,160) | Will Fujimori win the 2nd round of the 2026 Peru presidential election by 0.3\u20130.4%? / No / BUY ($1,153) | Will Fujimori win the 2nd round of the 2026 Peru presidential election by 0.1\u20130.2%? / No / BUY ($1,063)"
+      },
+      {
+        "tweet_id": "2062282321957450052",
+        "tweet_created_at": "2026-06-03T21:16:35+00:00",
+        "tweet_text": "@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade I haven't seen a single tracker get my PNL right, predictfolio is closest but still wrong",
+        "tweet_url": "https://x.com/balthazarpoly/status/2062282321957450052",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 1331,
+        "total_usdc_size": 51606.727272,
+        "unique_markets": 412,
+        "unique_transactions": 1174,
+        "buy_count": 987,
+        "sell_count": 344,
+        "top_categories": "politics/elections:602; weather:183; other:173; sports:166; tech/ai:137",
+        "top_markets_by_usdc": "Will Chong Won-oh win the 2026 Seoul Mayoral Election / Yes / BUY ($5,162) | Will Oh Se-hoon win the 2026 Seoul Mayoral Election / No / BUY ($4,393) | Will Chong Won-oh win the 2026 Seoul Mayoral Election / Yes / SELL ($3,863) | Will Oh Se-hoon win the 2026 Seoul Mayoral Election / Yes / BUY ($1,778) | Will Chong Won-oh win the 2026 Seoul Mayoral Election by less than 3%? / No / BUY ($1,778)"
+      },
+      {
+        "tweet_id": "2062282045229830294",
+        "tweet_created_at": "2026-06-03T21:15:29+00:00",
+        "tweet_text": "@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade I wish I had 940k PNL I wonder where these ridiculous figures come from",
+        "tweet_url": "https://x.com/balthazarpoly/status/2062282045229830294",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 1321,
+        "total_usdc_size": 50989.779111,
+        "unique_markets": 408,
+        "unique_transactions": 1165,
+        "buy_count": 977,
+        "sell_count": 344,
+        "top_categories": "politics/elections:594; weather:181; other:173; sports:166; tech/ai:137",
+        "top_markets_by_usdc": "Will Chong Won-oh win the 2026 Seoul Mayoral Election / Yes / BUY ($5,162) | Will Oh Se-hoon win the 2026 Seoul Mayoral Election / No / BUY ($4,393) | Will Chong Won-oh win the 2026 Seoul Mayoral Election / Yes / SELL ($3,863) | Will Oh Se-hoon win the 2026 Seoul Mayoral Election / Yes / BUY ($1,778) | Will Chong Won-oh win the 2026 Seoul Mayoral Election by less than 3%? / No / BUY ($1,778)"
+      },
+      {
+        "tweet_id": "2066565884986966116",
+        "tweet_created_at": "2026-06-15T16:57:56+00:00",
+        "tweet_text": "@MonteCarloSpam Correlations are the best https://t.co/BlEuMqkuon",
+        "tweet_url": "https://x.com/balthazarpoly/status/2066565884986966116",
+        "tweet_media_count": 1,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 2018,
+        "total_usdc_size": 50863.057746,
+        "unique_markets": 704,
+        "unique_transactions": 1922,
+        "buy_count": 1420,
+        "sell_count": 598,
+        "top_categories": "weather:441; sports:358; geopolitics:335; crypto:312; other:219",
+        "top_markets_by_usdc": "US and Iran sign an agreement by June 22, 2026? / Yes / BUY ($1,384) | Will the price of Bitcoin be between $62,000 and $64,000 on June 16? / No / BUY ($1,219) | Will the next diplomatic US-Iran meeting be in Switzerland? / Yes / BUY ($1,216) | Will the Fed increase interest rates by 50+ bps after the July 2026 meeting? / No / BUY ($1,198) | Will the price of Bitcoin be above $66,000 on June 15? / Yes / BUY ($1,191)"
+      },
+      {
+        "tweet_id": "2064353199344042388",
+        "tweet_created_at": "2026-06-09T14:25:31+00:00",
+        "tweet_text": "@nicoco89poly @Polymarket @MatthewModabber \ud83d\udc10",
+        "tweet_url": "https://x.com/balthazarpoly/status/2064353199344042388",
+        "tweet_media_count": 0,
+        "tweet_reference_types": "replied_to",
+        "window": "6h",
+        "direction": "before",
+        "trade_count": 2053,
+        "total_usdc_size": 48943.346273,
+        "unique_markets": 433,
+        "unique_transactions": 1938,
+        "buy_count": 1161,
+        "sell_count": 892,
+        "top_categories": "weather:764; other:565; tech/ai:460; politics/elections:72; sports:70",
+        "top_markets_by_usdc": "Will a Claude Mythos model be released by June 10, 2026? / Yes / BUY ($3,290) | Will a Claude Mythos model be released by June 9, 2026? / Yes / BUY ($2,925) | Will Claude Mythos be released on June 10? / No / BUY ($2,574) | Will SpaceX's market cap be less than $1.0T at market close on IPO day? / No / BUY ($1,590) | Will Claude Mythos be released on or prior to June 9? / No / BUY ($1,409)"
+      }
+    ]
+  },
+  "closed_positions_rough": {
+    "rows": 50874,
+    "rough_realized_pnl_sum": 195522.06427499998,
+    "winning_rows": 16459,
+    "losing_rows": 30879,
+    "top_wins": [
+      {
+        "datetime_utc": "2026-02-03T09:24:34+00:00",
+        "market_title": "Will the US not strike Iran by January 31, 2026?",
+        "outcome": "Yes",
+        "realized_pnl": "48117.52909",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:45:11+00:00",
+        "market_title": "Will MrBeast's video get between 80 and 81 million views on week 1?",
+        "outcome": "Yes",
+        "realized_pnl": "40720.14571",
+        "category": "culture/news"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:42:35+00:00",
+        "market_title": "Will Mojtaba Khamenei be the next Supreme Leader of Iran?",
+        "outcome": "No",
+        "realized_pnl": "38538.17755",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-22T18:21:31+00:00",
+        "market_title": "Will Donald Trump visit China on May 13, 2026?",
+        "outcome": "No",
+        "realized_pnl": "37115.379906",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-22T18:21:31+00:00",
+        "market_title": "Will Donald Trump visit China on May 13, 2026?",
+        "outcome": "No",
+        "realized_pnl": "37115.379906",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:44:13+00:00",
+        "market_title": "Will the US next strike Iran on February 28, 2026 (ET)?",
+        "outcome": "Yes",
+        "realized_pnl": "33773.398336",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:42:52+00:00",
+        "market_title": "Will MrBeast's latest video get between 72 and 73 million views on day 6?",
+        "outcome": "No",
+        "realized_pnl": "32199.252103",
+        "category": "culture/news"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:45:04+00:00",
+        "market_title": "Will the US next strike Iran on February 27, 2026 (ET)?",
+        "outcome": "Yes",
+        "realized_pnl": "31345.917305",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:44:58+00:00",
+        "market_title": "Will Mohsen Araki be the next Supreme Leader of Iran?",
+        "outcome": "Yes",
+        "realized_pnl": "27250.117244",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-13T12:39:49+00:00",
+        "market_title": "Will Donald Trump visit China on May 11, 2026?",
+        "outcome": "Yes",
+        "realized_pnl": "25970.954675",
+        "category": "geopolitics"
+      }
+    ],
+    "top_losses": [
+      {
+        "datetime_utc": "2026-02-28T10:47:51+00:00",
+        "market_title": "US strikes Iran by February 28, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-46477.615462",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-02-28T10:47:51+00:00",
+        "market_title": "US strikes Iran by February 28, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-46477.615462",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:45:04+00:00",
+        "market_title": "Will the US next strike Iran on February 27, 2026 (ET)?",
+        "outcome": "No",
+        "realized_pnl": "-32946.83185",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-13T12:39:49+00:00",
+        "market_title": "Will Donald Trump visit China on May 11, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-27707.983457",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-13T12:39:49+00:00",
+        "market_title": "Will Donald Trump visit China on May 11, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-27707.983457",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:44:58+00:00",
+        "market_title": "Will Mohsen Araki be the next Supreme Leader of Iran?",
+        "outcome": "No",
+        "realized_pnl": "-27622.879024",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-13T12:39:49+00:00",
+        "market_title": "Will Donald Trump visit China on May 12, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-27079.403678",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-13T12:39:49+00:00",
+        "market_title": "Will Donald Trump visit China on May 12, 2026?",
+        "outcome": "No",
+        "realized_pnl": "-27079.403678",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:44:13+00:00",
+        "market_title": "Will the US next strike Iran on February 28, 2026 (ET)?",
+        "outcome": "No",
+        "realized_pnl": "-24937.76862",
+        "category": "geopolitics"
+      },
+      {
+        "datetime_utc": "2026-05-26T18:43:03+00:00",
+        "market_title": "Will the US next strike Iran on February 26, 2026 (ET)?",
+        "outcome": "No",
+        "realized_pnl": "-23580.495092",
+        "category": "geopolitics"
+      }
+    ]
+  }
+}

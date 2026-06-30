@@ -1,0 +1,30 @@
+{
+  "created_outputs": [
+    "baseline_window_summary.json",
+    "closed_position_category_pnl_rough.csv",
+    "cluster_pattern_summary.json",
+    "daily_trade_activity.csv",
+    "initial_correlation_summary.json",
+    "initial_findings.md",
+    "initial_notes.md",
+    "market_category_summary.csv",
+    "media_ocr.json",
+    "media_ocr.txt",
+    "side_outcome_summary.csv",
+    "top_event_clusters.csv",
+    "top_markets_by_usdc.csv",
+    "top_seconds_clusters.csv",
+    "tweet_trade_windows.csv",
+    "tweet_window_baseline_comparison.csv",
+    "tweet_window_recent_baseline_comparison.csv",
+    "tweets_read_first.csv"
+  ],
+  "primary_readme": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/analysis/balthazar_initial_correlation/initial_findings.md",
+  "source_files": {
+    "x_tweets": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/tweets_combined.json",
+    "polymarket_trades": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/trade_transactions_master.csv",
+    "market_summary": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/trade_transactions_market_summary.csv",
+    "closed_positions": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/poly/data/polymarket_balthazar/closed_positions.csv"
+  },
+  "caveat": "Derived research outputs from public X and Polymarket exports; not raw source of truth."
+}

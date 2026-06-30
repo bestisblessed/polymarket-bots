@@ -1,0 +1,18 @@
+tweet_id,created_at,text,url,media_count,reference_types,mechanics_tags
+2057593175775084665,2026-05-21T22:43:35+00:00,"@Dr_PNL wV s*p*(1-p) is much lower than traditional vol s*p, not many reach beyond Gold",https://x.com/balthazarpoly/status/2057593175775084665,0,replied_to,pnl/tracker;tier/volume
+2061106958971633743,2026-05-31T15:26:07+00:00,@Dr_PNL @Polymarket Is it? https://t.co/QT4QvwZE9z,https://x.com/balthazarpoly/status/2061106958971633743,1,replied_to,pnl/tracker
+2062078581010833613,2026-06-03T07:46:59+00:00,"API users used to be able to keep a flow of hot orders and cancel if they didn't want to buy, bypassing the delay. Now the spam is over. https://t.co/NmilRWYSDt",https://x.com/balthazarpoly/status/2062078581010833613,0,quoted,api/rate-limit
+2062282045229830294,2026-06-03T21:15:29+00:00,@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade I wish I had 940k PNL I wonder where these ridiculous figures come from,https://x.com/balthazarpoly/status/2062282045229830294,0,replied_to,pnl/tracker
+2062282321957450052,2026-06-03T21:16:35+00:00,"@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade I haven't seen a single tracker get my PNL right, predictfolio is closest but still wrong",https://x.com/balthazarpoly/status/2062282321957450052,0,replied_to,pnl/tracker
+2062510372255351040,2026-06-04T12:22:46+00:00,Fun fact: Polymarket offers insanely high rate limits for everyone https://t.co/XaOQfau4re,https://x.com/balthazarpoly/status/2062510372255351040,1,,api/rate-limit;tier/volume
+2062511839649415448,2026-06-04T12:28:36+00:00,"Kalshi also has higher tiers gated behind inscrutable forms, the highest of which (Prime) is still half as what Polymarket offers",https://x.com/balthazarpoly/status/2062511839649415448,0,replied_to,tier/volume
+2062903486992289903,2026-06-05T14:24:52+00:00,@Eltonma 🔥,https://x.com/balthazarpoly/status/2062903486992289903,0,replied_to,
+2063972865221738774,2026-06-08T13:14:12+00:00,road to plat,https://x.com/balthazarpoly/status/2063972865221738774,0,,tier/volume
+2064212743951892546,2026-06-09T05:07:24+00:00,@3738283e convert,https://x.com/balthazarpoly/status/2064212743951892546,0,replied_to,
+2064353199344042388,2026-06-09T14:25:31+00:00,@nicoco89poly @Polymarket @MatthewModabber 🐐,https://x.com/balthazarpoly/status/2064353199344042388,0,replied_to,
+2065087696419065883,2026-06-11T15:04:08+00:00,@datadashxyz @Polymarket @PolymarketIntel @PolymarketTrade Higher 📈 DMed,https://x.com/balthazarpoly/status/2065087696419065883,0,replied_to,
+2065205016336507071,2026-06-11T22:50:20+00:00,Combinatorial module is impressive. Wish the quotes were a bit more transparent like the books. But chain-knows-all! https://t.co/5PQ6rXyU7o,https://x.com/balthazarpoly/status/2065205016336507071,0,quoted,correlation
+2066216447680930016,2026-06-14T17:49:24+00:00,@PolymarketDevs Taker rebates please🙏,https://x.com/balthazarpoly/status/2066216447680930016,0,replied_to,rebates/fees
+2066565884986966116,2026-06-15T16:57:56+00:00,@MonteCarloSpam Correlations are the best https://t.co/BlEuMqkuon,https://x.com/balthazarpoly/status/2066565884986966116,1,replied_to,correlation
+2066605465471995970,2026-06-15T19:35:13+00:00,@MonteCarloSpam Is Oprah long or short war?,https://x.com/balthazarpoly/status/2066605465471995970,0,replied_to,
+2068710802077413606,2026-06-21T15:01:04+00:00,@MonteCarloSpam tfw 4k ev fill https://t.co/T8UunlcW8A,https://x.com/balthazarpoly/status/2068710802077413606,1,replied_to,execution/ev

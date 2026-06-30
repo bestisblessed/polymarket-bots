@@ -1,0 +1,26 @@
+[
+  {
+    "file": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/media/2061106958971633743_0_3_2061106825072701443.jpg",
+    "returncode": 0,
+    "stderr": "Estimating resolution as 220",
+    "ocr_text": "day_of_week\nMon\nTue\nWed\nThu\nFri\nSat\n\nSun\n\ntotal_gain\n36510\n32022\n38619\n27029\n33550\n27961\n\n33902"
+  },
+  {
+    "file": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/media/2062510372255351040_0_3_2062509241609392128.jpg",
+    "returncode": 0,
+    "stderr": "Estimating resolution as 168",
+    "ocr_text": "| Polymarket\n\nTier Read budget Write budget\nEndpoint Burst Limit Sustained Limit\nBasic 200 100\nPosT /order 5,000 req / 10s 120,000 req / 10 min\nAdvanced 300 300 DELETE /order 5,000 req/ 10s 120,000 req / 10 min\nPosT /orders 2,000 req / 10s 21,000 req / 10 min\n\n\u00a9 Rate limit: 10 tokens per order in the batch \u2014 billed per item, so total cost\n\nfor a batch of N orders is N x 10, Other endpoints cost 10 tokens per request DELETE orders 2,000 req/ 10s 15,000 req / 10 min\n(not per item) unless noted on their own page. See Rate Limits and Tiers.\n\nEveryone = 725 order/s + 75200 cancel/s\n\n(orders batch 15/req cancel batch 3000/req)\n\nAdvanced = 20 order/s + 50 cancel/s"
+  },
+  {
+    "file": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/media/2066565884986966116_0_3_2066565696734064640.jpg",
+    "returncode": 0,
+    "stderr": "Estimating resolution as 126",
+    "ocr_text": "will-the-democratic-party-wit\n+1951 - lag +0h - politic\n\nscore +1.951 - nolag - tags: politics\n\n1000\n=*=*> will-the-democratic-party-win-the-va-06-house-seat bid\n\u2014\u2014 will-the-democratic-party-win-the-va-06-house-seat ask\n~ will-a-province-schedule-a-referendum-to-leave-canada-before-2027 bid\n\u2014\u2014 will-a-province-schedule-a-referendum-to-leave-canada-before-2027 ask\n800\n\n600\n\nprice\n\n400"
+  },
+  {
+    "file": "/Users/td/Code/polymarket-bots/my-correlation-bot-v1/research/x/data/x_official_balthazarpoly/media/2068710802077413606_0_3_2068710798914924544.jpg",
+    "returncode": 0,
+    "stderr": "",
+    "ocr_text": ""
+  }
+]
