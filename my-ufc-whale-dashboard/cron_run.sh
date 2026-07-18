@@ -15,13 +15,16 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 {
   echo "[$TIMESTAMP] Starting hourly UFC whale dashboard update..."
 
+  echo "[$TIMESTAMP] Updating the Streamlit checkout before running the pipeline..."
+  cd "$STREAMLIT_DIR"
+  git pull --ff-only
+
   cd "$SCRIPT_DIR"
   bash run.sh
 
   echo "[$TIMESTAMP] Pipeline completed. Checking for changes in Streamlit repo..."
 
   cd "$STREAMLIT_DIR"
-  git pull
 
   if git status --porcelain | grep -q "data/whale_data"; then
     echo "[$TIMESTAMP] Changes detected in data/whale_data. Committing and pushing..."
