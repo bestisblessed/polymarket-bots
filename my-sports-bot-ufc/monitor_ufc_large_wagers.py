@@ -20,14 +20,18 @@ References:
 
 import argparse
 import json
+import mimetypes
 import os
+import re
 import sys
 import threading
 import time
 from datetime import datetime
+from html.parser import HTMLParser
 import textwrap
 from typing import Optional
-import re
+from urllib.parse import urljoin, urlparse
+from zoneinfo import ZoneInfo
 
 from json import JSONDecodeError
 
@@ -44,9 +48,26 @@ WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json"
 PUSHOVER_TITLE = "UFC Whale Monitor 🥊"
 X_POST_ENDPOINT = "https://api.x.com/2/tweets"
+X_MEDIA_UPLOAD_ENDPOINT = "https://api.x.com/2/media/upload"
+UFC_EVENTS_URL = "https://www.ufc.com/events"
+UFC_BASE_URL = "https://www.ufc.com"
 
 # === Default Settings ===
 LOG_DIR = "logs"
+UFC_IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ufc_event_images")
+MAX_X_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_X_IMAGE_TYPES = {
+    "image/bmp": ".bmp",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/tiff": ".tiff",
+    "image/webp": ".webp",
+}
+UFC_REQUEST_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; LocalUFCWhaleMonitor/1.0)",
+}
+EVENT_DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})$")
+_x_media_cache = {}
 
 # === Health Check Settings ===
 HEALTHCHECK_URL = "https://hc-ping.com/fa7ea775-465a-4901-8b36-ed05b7d787ce"
@@ -100,9 +121,8 @@ def build_x_alert_tweet(
     usd_value: float,
     potential_profit: float,
     shares: float,
-    event_url: str,
 ) -> str:
-    """Build the short public X alert text."""
+    """Build a URL-free public X alert."""
     return clamp_tweet_text(
         "\n".join(
             [
@@ -114,15 +134,13 @@ def build_x_alert_tweet(
                 f"Market: {market_display}",
                 f"Side: {outcome} @ {price:.0%}",
                 f"Wager: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} shares)",
-                "",
-                event_url,
             ]
         )
     )
 
 
-def send_x_tweet(text: str) -> None:
-    """Post a text-only X tweet with OAuth 1.0a user context."""
+def get_x_auth() -> Optional[OAuth1]:
+    """Build X OAuth 1.0a user-context auth when all credentials are present."""
     required = [
         "X_API_KEY",
         "X_API_SECRET",
@@ -132,20 +150,101 @@ def send_x_tweet(text: str) -> None:
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
         print(f"[WARN] X credentials missing ({', '.join(missing)}), skipping tweet")
-        return
+        return None
 
-    auth = OAuth1(
+    return OAuth1(
         os.environ["X_API_KEY"],
         os.environ["X_API_SECRET"],
         os.environ["X_ACCESS_TOKEN"],
         os.environ["X_ACCESS_TOKEN_SECRET"],
     )
 
+
+def _x_media_cache_key(image_path: str) -> Optional[tuple]:
+    """Return a cache key that changes whenever the local image changes."""
+    try:
+        stat = os.stat(image_path)
+    except OSError as exc:
+        print(f"[WARN] UFC image unavailable for X upload: {exc}")
+        return None
+    return (os.path.abspath(image_path), stat.st_mtime_ns, stat.st_size)
+
+
+def upload_x_image(image_path: str, auth: OAuth1) -> Optional[str]:
+    """Upload one image to X and reuse its media ID until shortly before expiry."""
+    cache_key = _x_media_cache_key(image_path)
+    if cache_key is None:
+        return None
+
+    image_size = cache_key[2]
+    if image_size <= 0 or image_size > MAX_X_IMAGE_BYTES:
+        print(f"[WARN] UFC image is outside X's 5 MB limit: {image_size} bytes")
+        return None
+
+    media_type = (mimetypes.guess_type(image_path)[0] or "").lower()
+    if media_type not in ALLOWED_X_IMAGE_TYPES:
+        print(f"[WARN] Unsupported X image type: {media_type or 'unknown'}")
+        return None
+
+    cached = _x_media_cache.get(cache_key)
+    if cached and time.time() < cached["expires_at"]:
+        return cached["media_id"]
+
+    try:
+        with open(image_path, "rb") as image_file:
+            resp = requests.post(
+                X_MEDIA_UPLOAD_ENDPOINT,
+                auth=auth,
+                files={"media": (os.path.basename(image_path), image_file, media_type)},
+                data={
+                    "media_category": "tweet_image",
+                    "media_type": media_type,
+                },
+                timeout=30,
+            )
+        if not resp.ok:
+            print(f"[WARN] X media upload failed: {resp.status_code} {resp.text[:300]}")
+            return None
+
+        payload = resp.json()
+        media_id = str(payload.get("data", {}).get("id") or "")
+        if not media_id:
+            print("[WARN] X media upload response did not include data.id")
+            return None
+
+        try:
+            expires_after = int(payload.get("data", {}).get("expires_after_secs") or 0)
+        except (TypeError, ValueError):
+            expires_after = 0
+        if expires_after > 60:
+            _x_media_cache[cache_key] = {
+                "media_id": media_id,
+                "expires_at": time.time() + expires_after - 60,
+            }
+
+        print(f"[INFO] UFC image uploaded to X: {media_id}")
+        return media_id
+    except Exception as exc:
+        print(f"[WARN] X media upload error; posting text-only: {exc}")
+        return None
+
+
+def send_x_tweet(text: str, image_path: Optional[str] = None) -> None:
+    """Post a URL-free X alert, attaching the cached UFC card image when available."""
+    auth = get_x_auth()
+    if auth is None:
+        return
+
+    media_id = upload_x_image(image_path, auth) if image_path else None
+    payload = {"text": clamp_tweet_text(text)}
+    if media_id:
+        payload["media"] = {"media_ids": [media_id]}
+
     try:
         resp = requests.post(
             X_POST_ENDPOINT,
             auth=auth,
-            json={"text": clamp_tweet_text(text)},
+            json=payload,
             timeout=30,
         )
         if resp.ok:
@@ -158,6 +257,10 @@ def send_x_tweet(text: str) -> None:
             else:
                 print("[INFO] X tweet sent")
         else:
+            if media_id and resp.status_code in {400, 422}:
+                cache_key = _x_media_cache_key(image_path)
+                if cache_key:
+                    _x_media_cache.pop(cache_key, None)
             print(f"[WARN] X tweet failed: {resp.status_code} {resp.text[:300]}")
     except Exception as e:
         print(f"[ERROR] X tweet error: {e}")
@@ -252,6 +355,245 @@ def parse_threshold_from_env() -> float:
         raise ValueError("Missing THRESHOLD in environment")
     cleaned = str(raw).strip().replace("$", "").replace(",", "")
     return float(cleaned)
+
+
+class UFCEventsParser(HTMLParser):
+    """Extract event-page links and main-card timestamps from UFC's events list."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.current_event = None
+        self.article_depth = 0
+        self.events = []
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        attrs_dict = dict(attrs)
+        classes = set((attrs_dict.get("class") or "").split())
+
+        if tag == "article" and self.current_event is not None:
+            self.article_depth += 1
+        elif tag == "article" and "c-card-event--result" in classes:
+            self.current_event = {"href": None, "timestamp": None}
+            self.article_depth = 1
+            return
+
+        if self.current_event is None:
+            return
+
+        href = attrs_dict.get("href")
+        if tag == "a" and href and href.startswith("/event/") and not self.current_event["href"]:
+            self.current_event["href"] = href
+
+        timestamp = attrs_dict.get("data-main-card-timestamp")
+        if timestamp and not self.current_event["timestamp"]:
+            self.current_event["timestamp"] = timestamp
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag != "article" or self.current_event is None:
+            return
+        self.article_depth -= 1
+        if self.article_depth > 0:
+            return
+        if self.current_event["href"] and self.current_event["timestamp"]:
+            self.events.append(self.current_event)
+        self.current_event = None
+
+
+class UFCHeroImageParser(HTMLParser):
+    """Extract the first desktop hero asset, with the hero img as a fallback."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.desktop_srcset = None
+        self.fallback_src = None
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        attrs_dict = dict(attrs)
+        if (
+            tag == "source"
+            and attrs_dict.get("media") == "(min-width: 1440px)"
+            and attrs_dict.get("srcset")
+            and not self.desktop_srcset
+        ):
+            self.desktop_srcset = attrs_dict["srcset"]
+            return
+
+        src = attrs_dict.get("src")
+        if (
+            tag == "img"
+            and src
+            and "/images/styles/background_image_" in src
+            and not self.fallback_src
+        ):
+            self.fallback_src = src
+
+
+def event_date_from_slug(event_slug: str) -> Optional[str]:
+    """Return the YYYY-MM-DD suffix used by Polymarket UFC fight slugs."""
+    match = EVENT_DATE_RE.search(event_slug or "")
+    return match.group(1) if match else None
+
+
+def fetch_ufc_event_page_map() -> dict:
+    """Map each upcoming UFC main-card date to its official event page."""
+    try:
+        resp = requests.get(
+            UFC_EVENTS_URL,
+            headers=UFC_REQUEST_HEADERS,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        parser = UFCEventsParser()
+        parser.feed(resp.text)
+    except Exception as exc:
+        print(f"[WARN] UFC event discovery failed; X alerts will be text-only: {exc}")
+        return {}
+
+    event_pages = {}
+    ambiguous_dates = set()
+    eastern = ZoneInfo("America/New_York")
+
+    for event in parser.events:
+        try:
+            timestamp = float(event["timestamp"])
+            if timestamp > 10_000_000_000:
+                timestamp /= 1000
+            event_date = datetime.fromtimestamp(timestamp, tz=eastern).date().isoformat()
+        except (TypeError, ValueError, OSError):
+            continue
+
+        event_url = urljoin(UFC_BASE_URL, event["href"])
+        existing = event_pages.get(event_date)
+        if existing and existing != event_url:
+            ambiguous_dates.add(event_date)
+        else:
+            event_pages[event_date] = event_url
+
+    for event_date in ambiguous_dates:
+        event_pages.pop(event_date, None)
+        print(f"[WARN] Multiple UFC events found for {event_date}; using text-only X alerts")
+
+    print(f"[INFO] Matched {len(event_pages)} upcoming UFC event page(s) by date")
+    return event_pages
+
+
+def _first_srcset_url(srcset: str) -> Optional[str]:
+    """Return the 1x URL from a standard srcset string."""
+    first_candidate = (srcset or "").split(",", 1)[0].strip()
+    return first_candidate.split()[0] if first_candidate else None
+
+
+def cache_ufc_event_image(event_date: str, event_url: str) -> Optional[str]:
+    """Download and cache the official desktop hero image for one UFC card."""
+    try:
+        page_resp = requests.get(
+            event_url,
+            headers=UFC_REQUEST_HEADERS,
+            timeout=30,
+        )
+        page_resp.raise_for_status()
+        parser = UFCHeroImageParser()
+        parser.feed(page_resp.text)
+        image_src = _first_srcset_url(parser.desktop_srcset) or parser.fallback_src
+        if not image_src:
+            raise ValueError("desktop hero image not found")
+        image_url = urljoin(event_url, image_src)
+    except Exception as exc:
+        print(f"[WARN] UFC hero discovery failed for {event_date}: {exc}")
+        return None
+
+    page_slug = os.path.basename(urlparse(event_url).path.rstrip("/"))
+    safe_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", page_slug).strip("-")
+    if not safe_slug:
+        print(f"[WARN] UFC event page has no safe cache name: {event_url}")
+        return None
+
+    for extension in ALLOWED_X_IMAGE_TYPES.values():
+        cached_path = os.path.join(UFC_IMAGE_DIR, safe_slug + extension)
+        try:
+            cached_size = os.path.getsize(cached_path)
+        except OSError:
+            continue
+        if 0 < cached_size <= MAX_X_IMAGE_BYTES:
+            print(f"[INFO] Reusing cached UFC image for {event_date}: {cached_path}")
+            return cached_path
+
+    try:
+        image_resp = requests.get(
+            image_url,
+            headers=UFC_REQUEST_HEADERS,
+            timeout=30,
+            stream=True,
+        )
+        image_resp.raise_for_status()
+        media_type = (image_resp.headers.get("Content-Type") or "").split(";", 1)[0].lower()
+        extension = ALLOWED_X_IMAGE_TYPES.get(media_type)
+        if not extension:
+            raise ValueError(f"unsupported image content type: {media_type or 'missing'}")
+
+        content_length = int(image_resp.headers.get("Content-Length") or 0)
+        if content_length > MAX_X_IMAGE_BYTES:
+            raise ValueError(f"image is larger than 5 MB: {content_length} bytes")
+
+        image_bytes = bytearray()
+        for chunk in image_resp.iter_content(chunk_size=64 * 1024):
+            if not chunk:
+                continue
+            image_bytes.extend(chunk)
+            if len(image_bytes) > MAX_X_IMAGE_BYTES:
+                raise ValueError("image download exceeded 5 MB")
+        if not image_bytes:
+            raise ValueError("image download was empty")
+    except Exception as exc:
+        print(f"[WARN] UFC hero download failed for {event_date}: {exc}")
+        return None
+
+    os.makedirs(UFC_IMAGE_DIR, exist_ok=True)
+    image_path = os.path.join(UFC_IMAGE_DIR, safe_slug + extension)
+    temp_path = image_path + ".download"
+    try:
+        with open(temp_path, "wb") as image_file:
+            image_file.write(image_bytes)
+        os.replace(temp_path, image_path)
+    except OSError as exc:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        print(f"[WARN] Could not cache UFC hero for {event_date}: {exc}")
+        return None
+
+    print(f"[INFO] Cached UFC image for {event_date}: {image_path}")
+    return image_path
+
+
+def prepare_ufc_event_images(token_map: dict) -> None:
+    """Attach the correct cached card image path to each Polymarket fight token."""
+    dates = {
+        event_date_from_slug(info.get("event_slug") or "")
+        for info in token_map.values()
+    }
+    dates.discard(None)
+    if not dates:
+        print("[WARN] No dated UFC slugs found; X alerts will be text-only")
+        return
+
+    event_pages = fetch_ufc_event_page_map()
+    images_by_date = {}
+    for event_date in sorted(dates):
+        event_url = event_pages.get(event_date)
+        if not event_url:
+            print(f"[WARN] No UFC event page matched {event_date}; X alerts will be text-only")
+            continue
+        image_path = cache_ufc_event_image(event_date, event_url)
+        if image_path:
+            images_by_date[event_date] = image_path
+
+    for info in token_map.values():
+        event_date = event_date_from_slug(info.get("event_slug") or "")
+        info["ufc_image_path"] = images_by_date.get(event_date)
+
+    print(f"[INFO] Prepared {len(images_by_date)} UFC card image(s) for X alerts")
 
 
 def clean_event_title(title: Optional[str]) -> str:
@@ -579,6 +921,7 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
     event_slug = market_info.get("event_slug", "unknown")
     event_title = market_info.get("event_title") or "UFC Event"
     event_url = market_info.get("event_url") or ""
+    ufc_image_path = market_info.get("ufc_image_path")
     # Fight label is already in the Event line; Market line should be the specific market only.
 
     log_file = os.path.join(LOG_DIR, f"ufc_{event_slug}.log")
@@ -624,17 +967,18 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         if price >= 0.995:
             print("[INFO] X tweet skipped: bet price is already 100%")
             return
+        tweet_text = build_x_alert_tweet(
+            event_title,
+            market_display,
+            outcome,
+            price,
+            usd_value,
+            potential_profit,
+            size,
+        )
         send_x_tweet(
-            build_x_alert_tweet(
-                event_title,
-                market_display,
-                outcome,
-                price,
-                usd_value,
-                potential_profit,
-                size,
-                event_url,
-            )
+            tweet_text,
+            image_path=ufc_image_path,
         )
 
 
@@ -684,6 +1028,8 @@ def run_monitor(target: str, threshold: float):
     if not token_ids:
         print("[ERROR] No token IDs found to monitor")
         sys.exit(1)
+
+    prepare_ufc_event_images(token_map)
 
     # Print startup info for single-event mode
     if (target or "").lower() != "all":
