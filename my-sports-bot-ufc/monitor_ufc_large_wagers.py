@@ -127,10 +127,10 @@ def build_x_alert_tweet(
         "\n".join(
             [
                 "━━━━━━━━━━━",
-                "🐳 UFC Whale Watch 🐳",
+                "═════ 🐳 UFC SHARP ACTION ═════",
                 "━━━━━━━━━━━",
                 "",
-                f"🥊 {event_title}",
+                event_title,
                 f"Market: {market_display}",
                 f"Side: {outcome} @ {price:.0%}",
                 f"Wager: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} shares)",
