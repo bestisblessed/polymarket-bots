@@ -117,7 +117,7 @@ reuses that media ID until shortly before X's reported expiration time.
 
 - Alerts rely on `last_trade_price` (executed trades). `price_change` is emitted when orders are placed or canceled, so it can create false whale alerts if used for detection. See the Market Channel docs for details: https://docs.polymarket.com/developers/CLOB/websocket/market-channel.md
 - Only BUY side triggers alerts (avoids duplicate notifications)
-- X alert format mirrors the Pushover details and uses exactly one emoji in the title: `═════ 🐳 UFC SHARP ACTION ═════`
+- X alert format mirrors the Pushover details with a compact one-line header designed to stay clean on phone screens: `— 🐳 UFC SHARP ACTION —`
 - The Polymarket URL remains in Pushover but is deliberately omitted from X
 - The same cached card image is used for every fight notification from that card
 - X posting failures are logged and do not stop Pushover alerts or the monitor loop
