@@ -51,7 +51,7 @@ X_POST_ENDPOINT = "https://api.x.com/2/tweets"
 X_MEDIA_UPLOAD_ENDPOINT = "https://api.x.com/2/media/upload"
 UFC_EVENTS_URL = "https://www.ufc.com/events"
 UFC_BASE_URL = "https://www.ufc.com"
-X_ALERT_HEADER = "— 🐳 UFC SHARP ACTION —"
+X_ALERT_HEADER = "═════ 🐳 UFC SHARP ACTION ═════"
 
 # === Default Settings ===
 LOG_DIR = "logs"
