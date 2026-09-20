@@ -22,7 +22,7 @@ GAMMA_API = "https://gamma-api.polymarket.com/events"
 DATA_API = "https://data-api.polymarket.com/holders"
 
 LIMIT_EVENTS = 200
-LIMIT_HOLDERS = 50  # fetch more to have enough for per-side tables
+LIMIT_HOLDERS = 20  # Data API maximum per token
 MIN_BALANCE = 10
 HOLDER_BATCH_SIZE = 20
 
@@ -131,9 +131,21 @@ def fetch_holders_for_markets(condition_ids):
             timeout=30,
         )
         r.raise_for_status()
-        return r.json()
+        return r.json() or []
     except Exception as e:
         print(f"  Error fetching holders for {len(condition_ids)} markets: {e}")
+        is_forbidden = (
+            isinstance(e, requests.HTTPError)
+            and e.response is not None
+            and e.response.status_code == 403
+        )
+        if is_forbidden and len(condition_ids) > 1:
+            midpoint = len(condition_ids) // 2
+            print("  Retrying failed holders batch as smaller requests...")
+            return (
+                fetch_holders_for_markets(condition_ids[:midpoint])
+                + fetch_holders_for_markets(condition_ids[midpoint:])
+            )
         return []
 
 

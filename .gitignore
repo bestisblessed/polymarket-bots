@@ -1,3 +1,5 @@
+*.zip
+*-bak
 my-correlation-bot-v1/data/polymarket_balthazar
 #my-sports-bot-ufc/logs/console.log
 #my-sports-bot-ufc/logs/startup.log
