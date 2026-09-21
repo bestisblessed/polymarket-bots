@@ -60,6 +60,23 @@ PUSHOVER_GROUP_KEY=your_group_key_here
 
 ## Utils
 
+### Robinhood Chain holder export
+
+`export_holders.sh` downloads every indexed ERC-20 holder from the configured
+Blockscout instance. It follows the v2 pagination cursor, retries transient
+HTTP failures and rate limits with backoff, excludes contracts/pools/protocol
+addresses and burn/system addresses from the main CSV, and writes excluded
+rows to a companion audit CSV.
+
+```sh
+chmod +x export_holders.sh
+./export_holders.sh 0x020bfC650A365f8BB26819deAAbF3E21291018b4
+```
+
+The main output is `holders_<contract-address>.csv`; pass a second argument to
+choose another output path. The script verifies pagination, duplicate-free
+coverage, and the final count against Blockscout token metadata.
+
 One-off scripts in `utils/` for various Polymarket tasks
 
 - **`utils/poly_data_get_user_balance.py`** - Gets total holdings value across all markets for a user wallet address.
