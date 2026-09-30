@@ -916,7 +916,7 @@ def deliver_whale_alert(job: dict) -> bool:
         print("[INFO] X tweet skipped: bet price is already 100%")
         return True
     trader, evidence = lookup_trader(job["data"], job["condition_id"])
-    print(f"[INFO] Trader attribution: {json.dumps(evidence, sort_keys=True)}")
+    print(f"[INFO] Trader attribution: {json.dumps(evidence, sort_keys=True)}", flush=True)
     tweet_text = build_x_alert_tweet(
         job["event_title"], job["market_display"], job["outcome"], job["price"],
         job["usd_value"], job["potential_profit"], job["size"], trader=trader,

@@ -153,15 +153,38 @@ automatically retried because a POST may have succeeded: inspect any remaining
 logs the full unsaved job and an explicit manual-recovery error. The spool needs
 a writable local data directory; it is not a guarantee against disk/power failure.
 
-For eligible X alerts, a background worker waits up to 15 seconds for public `/trades`
-indexing. The query uses the market condition ID, BUY/taker trades, and a
-two-second window around the WebSocket timestamp. Matching requires the same
+For eligible X alerts, a background worker waits up to 90 seconds for public `/v2/trades`
+indexing, retrying every two seconds and posting as soon as a safe match appears.
+This budget starts when the worker begins attribution; queue delay is additional.
+Pushover is sent before lookup. If the deadline expires, X receives the normal
+unattributed fallback; unsafe or invalid matches fall back immediately. Logs include
+attempts, elapsed lookup seconds, and the final reason (plus the last reason on timeout),
+original stream identifiers/hash, page/row counts, field rejection counts, cache status/age,
+and the request's `end` value. Both API versions were observed caching identical URLs
+for five minutes (v2 can expose an increasing `Age` even with `CF-Cache-Status: DYNAMIC`).
+A `no-cache` request header did not bypass the legacy cache. Reusing an initially empty
+URL can therefore exhaust the budget without seeing newly indexed trades. On every
+retry we set the documented `end` parameter to the current epoch second, producing
+a fresh URL; it is **ignored for condition queries**, so it cannot widen the match.
+This was verified against a recorded live trade: the cached query remained missing
+its hash while a fresh query returned the exact transaction and trader.
+The query uses the condition ID, BUY/taker trades, and the documented `TOKENS`
+minimum-size filter (allowing the matching size tolerance). Every opaque cursor is
+followed before accepting a unique match. v2 condition queries ignore `start`/`end`,
+so the fixed five-second window on either side of the **original** WebSocket timestamp
+is applied locally on every attempt; waiting does not move or widen it. Matching requires the same
 condition ID, token, side, price (within 0.000001), size (within 0.0001 shares),
-and timestamp (within two seconds). If the stream supplies `transaction_hash`,
+and timestamp (within five seconds, allowing for settlement timestamp lag). If the stream supplies `transaction_hash`,
 it must match the public trade's transaction hash. Otherwise only one distinct
 matching trade is accepted. This is correlation, not proof of a person's real
 identity; split fills, ambiguous results, malformed rows, saturated query
 windows, and unavailable data fall back to the existing unattributed alert.
+
+References: [v2 trade endpoint/schema](https://data-api.polymarket.com/v2/openapi.json),
+[official v1-to-v2 migration guide](https://docs.polymarket.com/migrate/data-api-v1-to-v2.md).
+Wallet activity/profile endpoints require an already-known wallet; the authenticated
+user stream covers the caller's trades, not all whale traders. They are not substitutes
+for the public market trade feed used here. No extra connection or credentials are needed.
 
 The public label uses name, pseudonym, then wallet. URL-like names and X
 mentions are rejected. After a blank line, the tweet appends

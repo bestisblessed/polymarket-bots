@@ -30,6 +30,15 @@ INFO = {"condition_id": CONDITION, "event_title": "UFC 330 - Islam Makhachev vs.
         "sports_market_type": "moneyline", "event_slug": "ufc-test"}
 
 
+def trade_page(rows, cursor=None):
+    """Convert recorded v1 fixtures to the documented v2 response envelope."""
+    fields = {"conditionId": "condition_id", "asset": "token_id",
+              "transactionHash": "transaction_hash", "proxyWallet": "proxy_wallet"}
+    return {"data": [{fields.get(key, key): value for key, value in row.items()} for row in rows],
+            "pagination": {"limit": 1000, "offset": 0, "has_more": cursor is not None,
+                           "next_cursor": cursor}}
+
+
 class MatchingTests(unittest.TestCase):
     def test_hash_match_and_duplicate_row(self):
         trader, evidence = attribution.match_trader(EVENT, CONDITION, [TRADE, TRADE.copy()])
@@ -49,6 +58,36 @@ class MatchingTests(unittest.TestCase):
 
     def test_wrong_hash_rejected(self):
         self.assertIsNone(attribution.match_trader(EVENT, CONDITION, [{**TRADE, "transactionHash": "0x" + "4" * 64}])[0])
+
+    def test_recent_alert_timestamp_lag(self):
+        # Reconstructed stream fields and public trade timestamps from the two
+        # Sep 30 alerts; original stream hashes were not retained.
+        for timestamp, settled, size, public_size in [
+                (1790794391389, 1790794394, "329", 329),
+                (1790794793036, 1790794796, "1490.3235", 1490.323528)]:
+            with self.subTest(timestamp=timestamp):
+                event = {**EVENT, "timestamp": str(timestamp), "size": size}
+                row = {**TRADE, "timestamp": settled, "size": public_size}
+                for hashed in (True, False):
+                    candidate = dict(event)
+                    if not hashed:
+                        candidate.pop("transaction_hash")
+                    trader, evidence = attribution.match_trader(candidate, CONDITION, [row])
+                    self.assertEqual(trader["wallet"], WALLET)
+                    self.assertEqual(evidence["candidate_count"], 1)
+
+    def test_extended_timestamp_window_keeps_safety_checks(self):
+        event = {**EVENT, "timestamp": "1786702800000"}
+        for delta in (-5, 5):
+            row = {**TRADE, "timestamp": 1786702800 + delta}
+            self.assertIsNotNone(attribution.match_trader(event, CONDITION, [row])[0])
+            wrong_hash = {**row, "transactionHash": "0x" + "4" * 64}
+            self.assertIsNone(attribution.match_trader(event, CONDITION, [wrong_hash])[0])
+            other = {**row, "proxyWallet": "0x" + "4" * 40}
+            self.assertEqual(attribution.match_trader(event, CONDITION, [row, other])[1]["status"], "ambiguous")
+        for delta in (-6, 6):
+            self.assertIsNone(attribution.match_trader(event, CONDITION,
+                              [{**TRADE, "timestamp": 1786702800 + delta}])[0])
 
     def test_split_fill_and_other_trade_fields_rejected(self):
         for field, value in [("size", 100), ("price", 0.77), ("timestamp", 1786702810),
@@ -74,19 +113,25 @@ class MatchingTests(unittest.TestCase):
 
     def test_delayed_indexing(self):
         empty, indexed = Mock(), Mock()
-        empty.json.return_value = []
-        indexed.json.return_value = [TRADE]
+        empty.json.return_value = trade_page([])
+        indexed.json.return_value = trade_page([TRADE])
         with patch.object(attribution.requests, "get", side_effect=[empty, indexed]) as get, \
                 patch.object(attribution.threading.Event, "wait", return_value=False):
             trader, evidence = attribution.lookup_trader(EVENT, CONDITION, budget=1)
         self.assertEqual(trader["wallet"], WALLET)
         self.assertEqual(evidence["attempts"], 2)
-        self.assertEqual(get.call_args.kwargs["params"]["market"], CONDITION)
+        self.assertEqual(get.call_args.args[0], "https://data-api.polymarket.com/v2/trades")
+        self.assertEqual(get.call_args.kwargs["params"]["condition"], CONDITION)
         self.assertEqual(get.call_args.kwargs["params"]["side"], "BUY")
+        self.assertEqual(get.call_args.kwargs["params"]["taker_only"], "true")
+        self.assertEqual(get.call_args.kwargs["params"]["filter_amount"], "6745.1799")
+        self.assertNotIn("start", get.call_args.kwargs["params"])
+        self.assertEqual(evidence["window_seconds"], 5)
+        self.assertEqual(evidence["event"]["timestamp"], EVENT["timestamp"])
 
     def test_lookup_wall_clock_timeout(self):
         response = Mock()
-        response.json.return_value = []
+        response.json.return_value = trade_page([])
         def delayed(*args, **kwargs):
             time.sleep(0.2)
             return response
@@ -95,7 +140,213 @@ class MatchingTests(unittest.TestCase):
             trader, evidence = attribution.lookup_trader(EVENT, CONDITION, budget=0.03)
         self.assertIsNone(trader)
         self.assertEqual(evidence["status"], "timeout")
+        self.assertEqual(evidence["attempts"], 1)
+        self.assertGreaterEqual(evidence["elapsed_seconds"], 0.03)
         self.assertLess(time.monotonic() - start, 0.15)
+
+    def test_lookup_error_attempts_are_retained(self):
+        indexed = Mock()
+        indexed.json.return_value = trade_page([TRADE])
+        with patch.object(attribution.requests, "get", side_effect=[requests.Timeout(), indexed]), \
+                patch.object(attribution.threading.Event, "wait", return_value=False):
+            trader, evidence = attribution.lookup_trader(EVENT, CONDITION, budget=1)
+        self.assertEqual(trader["wallet"], WALLET)
+        self.assertEqual(evidence["attempts"], 2)
+        self.assertIn("elapsed_seconds", evidence)
+
+
+class V2FeedTests(unittest.TestCase):
+    def lookup(self, pages, *, event=EVENT, condition=CONDITION):
+        responses = []
+        for page in pages:
+            response = Mock(headers={"CF-Cache-Status": "DYNAMIC"})
+            response.json.return_value = page
+            responses.append(response)
+        with patch.object(attribution.requests, "get", side_effect=responses) as get:
+            result = attribution.lookup_trader(event, condition, budget=1)
+        self.assertTrue(all(call.args[0].endswith("/v2/trades") for call in get.call_args_list))
+        return result, get
+
+    def test_matching_later_page_and_fixed_local_window(self):
+        outside = {**TRADE, "timestamp": TRADE["timestamp"] - 20}
+        result, get = self.lookup([trade_page([outside] * 1000, "next-page"), trade_page([TRADE])])
+        self.assertEqual(result[0]["wallet"], WALLET)
+        self.assertEqual(result[1]["pages"], 2)
+        self.assertEqual(result[1]["outside_window"], 1000)
+        self.assertEqual(result[1]["response_rows"], 1001)
+        self.assertEqual(get.call_args.kwargs["params"]["cursor"], "next-page")
+
+    def test_first_page_is_not_accepted_before_ambiguity_check(self):
+        other = {**TRADE, "proxyWallet": "0x" + "4" * 40}
+        result, get = self.lookup([trade_page([TRADE], "next-page"), trade_page([other])])
+        self.assertIsNone(result[0])
+        self.assertEqual(result[1]["status"], "ambiguous")
+        self.assertEqual(get.call_count, 2)
+
+    def test_invalid_envelopes_and_cursor_loops_fall_back(self):
+        for page in ([TRADE], {"data": []}, trade_page([{}]),
+                     {"data": [], "pagination": {"has_more": True, "next_cursor": None}}):
+            result, _ = self.lookup([page])
+            self.assertIsNone(result[0])
+            self.assertIn(result[1]["status"], ("invalid_response", "incomplete_window"))
+        result, _ = self.lookup([trade_page([TRADE], "loop"), trade_page([], "loop")])
+        self.assertIsNone(result[0])
+        self.assertEqual(result[1]["status"], "incomplete_window")
+
+    def test_hash_rejection_is_logged_with_original_evidence(self):
+        wrong = {**TRADE, "transactionHash": "0x" + "4" * 64}
+        response = Mock(headers={"CF-Cache-Status": "DYNAMIC"})
+        response.json.return_value = trade_page([wrong])
+        with patch.object(attribution.requests, "get", return_value=response):
+            trader, evidence = attribution.lookup_trader(EVENT, CONDITION, budget=.02)
+        self.assertIsNone(trader)
+        self.assertEqual(evidence["last_status"], "unmatched")
+        self.assertEqual(evidence["rejected"], {"transaction_hash": 1})
+        self.assertEqual(evidence["event"]["transaction_hash"], TX)
+        self.assertEqual(evidence["cache_status"], "DYNAMIC")
+
+    def test_failed_gautier_alert_regression(self):
+        # Actual log fields + public Data API row. The original stream hash
+        # was not retained; this is explicitly a reconstructed event.
+        condition = "0x4b897f960f234b0b6f07ee08313481443ce839b2fa6440ab120a3e32398e1b1f"
+        token = "52563667488257722253844178460924496771983983501858347935033892130384423158852"
+        event = {"asset_id": token, "market": condition, "side": "BUY",
+                 "price": ".67", "size": "655.86", "timestamp": "1790802763248"}
+        row = {**TRADE, "conditionId": condition, "asset": token,
+               "price": .67, "size": 655.86, "timestamp": 1790802765,
+               "transactionHash": "0x920123f4fda3aaa0c04b49a901049d8d4b6c81084ea72ee63197d291d932f777",
+               "proxyWallet": "0x6dd6314d1670f9f1ccccbd6746b0bf2f2fa0f5f4", "name": "4751346"}
+        response = Mock(headers={"CF-Cache-Status": "DYNAMIC"})
+        response.json.return_value = trade_page([row])
+        with patch.object(attribution.requests, "get", return_value=response):
+            trader, evidence = attribution.lookup_trader(event, condition, budget=1)
+        self.assertEqual(trader["name"], "4751346")
+        self.assertEqual(trader["wallet"], row["proxyWallet"])
+        self.assertEqual(evidence["matched_by"], "unique_trade")
+        self.assertEqual(evidence["attempts"], 1)
+
+    def test_recorded_live_event_matches_original_hash_and_wallet(self):
+        # Recorded Sep 30 MLB stream event, not a reconstructed UFC event.
+        condition = "0x17c93ea8fa84d1f0c5916e79f033d3623fed8d4d431089f21557fdc91b2b0fd6"
+        token = "42582623562674250237201115321153881172387239207835122724506860872726437197351"
+        tx = "0x9ee22aab2b6b60366f728aa96d85f9447d876466e8346e3fd4dbd832fed06dc1"
+        wallet = "0x5268527977f700f9bf9b6d5cd843859e4e70135d"
+        event = {"market": condition, "asset_id": token, "side": "BUY", "price": "0.64",
+                 "size": "300", "timestamp": "1790804533150", "transaction_hash": tx}
+        row = {**TRADE, "conditionId": condition, "asset": token, "price": .64,
+               "size": 300, "timestamp": 1790804535, "transactionHash": tx,
+               "proxyWallet": wallet, "name": "HomeRunHazard"}
+        result, _ = self.lookup([trade_page([row])], event=event, condition=condition)
+        self.assertEqual(result[0]["wallet"], wallet)
+        self.assertEqual(result[0]["name"], "HomeRunHazard")
+        self.assertEqual(result[1]["transaction_hash"], event["transaction_hash"])
+        self.assertEqual(result[1]["matched_by"], "transaction_hash")
+
+
+class AttributionBudgetTests(unittest.TestCase):
+    def simulate(self, indexed_at, *, budget=None, rows=None):
+        clock = [0.0]
+        waits = []
+        cached = {}
+
+        class FakeEvent:
+            stopped = False
+
+            def is_set(self):
+                return self.stopped
+
+            def set(self):
+                self.stopped = True
+
+            def wait(self, seconds):
+                waits.append(seconds)
+                clock[0] += seconds
+                return self.stopped
+
+        class InlineThread:
+            def __init__(self, *, target, **kwargs):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        def fetch(*args, **kwargs):
+            # A request begun at 88s can finish with indexed data at 89s.
+            if indexed_at is not None and 0 < indexed_at - clock[0] <= 1:
+                clock[0] = float(indexed_at)
+            response = Mock()
+            # Reproduce a cache that freezes an initially empty URL for >90s.
+            key = tuple(sorted(kwargs["params"].items()))
+            if key not in cached:
+                cached[key] = trade_page(([TRADE] if rows is None else rows)
+                                          if indexed_at is not None and clock[0] >= indexed_at else [])
+            response.json.return_value = cached[key]
+            return response
+
+        with patch.object(attribution.time, "monotonic", side_effect=lambda: clock[0]), \
+                patch.object(attribution.time, "time", side_effect=lambda: 1790802763 + clock[0]), \
+                patch.object(attribution.threading, "Event", FakeEvent), \
+                patch.object(attribution.threading, "Thread", InlineThread), \
+                patch.object(attribution.requests, "get", side_effect=fetch) as get:
+            result = attribution.lookup_trader(EVENT, CONDITION, **({} if budget is None else {"budget": budget}))
+            attempts = get.call_count
+            clock[0] += 100
+            self.assertEqual(get.call_count, attempts, "polling must stop after returning")
+        self.assertTrue(all(0 <= seconds <= 2 for seconds in waits))
+        stable = {key: value for key, value in get.call_args.kwargs["params"].items() if key != "end"}
+        self.assertTrue(all({key: value for key, value in call.kwargs["params"].items() if key != "end"}
+                            == stable for call in get.call_args_list))
+        self.assertEqual(len({call.kwargs["params"]["end"] for call in get.call_args_list}), attempts,
+                         "retries must not reuse a cached first-page URL")
+        self.assertEqual(result[1]["event"]["timestamp"], EVENT["timestamp"])
+        self.assertEqual(result[1]["window_seconds"], 5, "matching window must stay fixed")
+        self.assertEqual(result[1]["attempts"], attempts)
+        return result
+
+    def test_delayed_indexing_posts_once_with_attribution(self):
+        for indexed_at in (0, 20, 60, 89):
+            with self.subTest(indexed_at=indexed_at):
+                result = self.simulate(indexed_at)
+                self.assertEqual(result[1]["status"], "matched")
+                self.assertEqual(result[1]["elapsed_seconds"], indexed_at)
+                self.deliver_once(result, attributed=True)
+                print(f"[VERIFY] Indexing at {indexed_at}s: one attributed post")
+
+    def test_90_second_deadline_posts_once_without_attribution(self):
+        result = self.simulate(None, budget=200)
+        self.assertEqual(result[1]["status"], "timeout")
+        self.assertEqual(result[1]["budget_seconds"], 90)
+        self.assertEqual(result[1]["elapsed_seconds"], 90)
+        self.assertEqual(result[1]["last_status"], "unmatched")
+        self.deliver_once(result, attributed=False)
+        print("[VERIFY] Unavailable at 90s: one fallback post, polling stopped")
+
+    def test_unsafe_and_invalid_results_do_not_wait(self):
+        other = {**TRADE, "proxyWallet": "0x" + "4" * 40}
+        for rows, status in [([TRADE, other], "ambiguous"), ([{}], "invalid_response")]:
+            result = self.simulate(0, rows=rows)
+            self.assertIsNone(result[0])
+            self.assertEqual(result[1]["status"], status)
+            self.assertEqual(result[1]["elapsed_seconds"], 0)
+            self.deliver_once(result, attributed=False)
+
+    def deliver_once(self, result, *, attributed):
+        job = {"data": EVENT, "condition_id": CONDITION, "price": .76,
+               "event_title": INFO["event_title"], "market_display": "Moneyline",
+               "outcome": INFO["outcome"], "usd_value": 5126.34,
+               "potential_profit": 1618.84, "size": 6745.18,
+               "ufc_image_path": None, "pushover_message": "test", "event_url": ""}
+        with patch.object(monitor, "send_pushover") as push, \
+                patch.object(monitor, "lookup_trader", return_value=result) as lookup, \
+                patch.object(monitor, "send_x_tweet", return_value="test-post-id") as post:
+            def find(*args):
+                push.assert_called_once()
+                return result
+            lookup.side_effect = find
+            self.assertTrue(monitor.deliver_whale_alert(job))
+        lookup.assert_called_once()
+        post.assert_called_once()
+        self.assertEqual("Polymarket Trader:" in post.call_args.args[0], attributed)
 
 
 class ImageAndPostTests(unittest.TestCase):
