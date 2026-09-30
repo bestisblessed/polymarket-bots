@@ -39,6 +39,11 @@ import requests
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth1
 import websocket
+from alert_dispatcher import AlertDispatcher
+from trader_attribution import (
+    compose_trader_image, fit_text, lookup_trader, match_trader,
+    weighted_length,
+)
 
 load_dotenv()
 
@@ -51,11 +56,12 @@ X_POST_ENDPOINT = "https://api.x.com/2/tweets"
 X_MEDIA_UPLOAD_ENDPOINT = "https://api.x.com/2/media/upload"
 UFC_EVENTS_URL = "https://www.ufc.com/events"
 UFC_BASE_URL = "https://www.ufc.com"
-X_ALERT_HEADER = "═════ 🐳 UFC SHARP ACTION ═════"
+X_ALERT_HEADER = "🐳 UFC SHARP ACTION"
 
 # === Default Settings ===
 LOG_DIR = "logs"
 UFC_IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ufc_event_images")
+ALERT_SPOOL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "alert_jobs")
 MAX_X_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_X_IMAGE_TYPES = {
     "image/bmp": ".bmp",
@@ -109,9 +115,7 @@ def send_pushover(message: str, url: Optional[str] = None, title: Optional[str] 
 
 def clamp_tweet_text(text: str) -> str:
     """Keep the post inside X's 280 character limit."""
-    if len(text) <= 280:
-        return text
-    return text[:277].rstrip() + "..."
+    return fit_text(text, 280)
 
 
 def build_x_alert_tweet(
@@ -122,20 +126,32 @@ def build_x_alert_tweet(
     usd_value: float,
     potential_profit: float,
     shares: float,
+    trader: Optional[dict] = None,
+    post_prefix: Optional[str] = None,
 ) -> str:
     """Build a URL-free public X alert."""
-    return clamp_tweet_text(
-        "\n".join(
-            [
-                X_ALERT_HEADER,
-                "",
-                event_title,
-                f"Market: {market_display}",
-                f"Side: {outcome} @ {price:.0%}",
-                f"Wager: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} shares)",
-            ]
-        )
-    )
+    header = X_ALERT_HEADER
+    labels = [event_title, market_display, outcome, trader["name"] if trader else ""]
+    wager = f"Wager: {format_usd(usd_value)} to win {format_usd(potential_profit)} ({shares:,.2f} shares)"
+
+    def render():
+        lines = [header, "", labels[0], f"Market: {labels[1]}",
+                 f"Side: {labels[2]} @ {price:.0%}", wager]
+        if trader:
+            lines.extend(["", f"Polymarket Trader: {labels[3]} | Wallet: {trader['wallet']}"])
+        if post_prefix:
+            lines.insert(0, post_prefix)
+        return "\n".join(lines)
+
+    # Reserve the full numeric wager and wallet; shorten descriptive fields first.
+    while weighted_length(render()) > 280:
+        candidates = [i for i, label in enumerate(labels) if weighted_length(label) > 4]
+        if not candidates:
+            raise ValueError("Wager and attribution cannot fit in one X post")
+        index = max(candidates, key=lambda i: weighted_length(labels[i]))
+        excess = weighted_length(render()) - 280
+        labels[index] = fit_text(labels[index], max(4, weighted_length(labels[index]) - excess))
+    return render()
 
 
 def get_x_auth() -> Optional[OAuth1]:
@@ -228,7 +244,7 @@ def upload_x_image(image_path: str, auth: OAuth1) -> Optional[str]:
         return None
 
 
-def send_x_tweet(text: str, image_path: Optional[str] = None) -> None:
+def send_x_tweet(text: str, image_path: Optional[str] = None) -> Optional[str]:
     """Post a URL-free X alert, attaching the cached UFC card image when available."""
     auth = get_x_auth()
     if auth is None:
@@ -255,6 +271,7 @@ def send_x_tweet(text: str, image_path: Optional[str] = None) -> None:
                 print(f"[INFO] X tweet sent: {tweet_id}")
             else:
                 print("[INFO] X tweet sent")
+            return tweet_id
         else:
             if media_id and resp.status_code in {400, 422}:
                 cache_key = _x_media_cache_key(image_path)
@@ -690,6 +707,7 @@ def build_token_map_for_event(*, event_slug: str, event_title: Optional[str], ma
                 "market_type": market_type,
                 "group_item_title": group_item_title,
                 "sports_market_type": sports_market_type,
+                "condition_id": market.get("conditionId"),
             }
             token_ids.append(token_id)
 
@@ -891,7 +909,26 @@ def fetch_ufc_fight_events(*, limit: int = 200) -> list:
     return fights
 
 
-def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> None:
+def deliver_whale_alert(job: dict) -> bool:
+    """Run notification I/O outside the WebSocket receive callback."""
+    send_pushover(job["pushover_message"], job["event_url"])
+    if job["price"] >= 0.995:
+        print("[INFO] X tweet skipped: bet price is already 100%")
+        return True
+    trader, evidence = lookup_trader(job["data"], job["condition_id"])
+    print(f"[INFO] Trader attribution: {json.dumps(evidence, sort_keys=True)}")
+    tweet_text = build_x_alert_tweet(
+        job["event_title"], job["market_display"], job["outcome"], job["price"],
+        job["usd_value"], job["potential_profit"], job["size"], trader=trader,
+    )
+    image_path = job["ufc_image_path"]
+    # QR footer disabled for now. Uncomment this line to restore it.
+    # image_path = compose_trader_image(image_path, trader)
+    return bool(send_x_tweet(tweet_text, image_path=image_path))
+
+
+def process_last_trade_price(data: dict, token_map: dict, threshold: float, *,
+                             alert_dispatcher: AlertDispatcher) -> None:
     """
     Process a last_trade_price event and alert on large executed trades.
 
@@ -962,23 +999,14 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url)
-        if price >= 0.995:
-            print("[INFO] X tweet skipped: bet price is already 100%")
-            return
-        tweet_text = build_x_alert_tweet(
-            event_title,
-            market_display,
-            outcome,
-            price,
-            usd_value,
-            potential_profit,
-            size,
-        )
-        send_x_tweet(
-            tweet_text,
-            image_path=ufc_image_path,
-        )
+        alert_dispatcher.submit({
+            "data": dict(data), "condition_id": market_info.get("condition_id"),
+            "event_title": event_title, "market_display": market_display,
+            "outcome": outcome, "price": price, "size": size,
+            "usd_value": usd_value, "potential_profit": potential_profit,
+            "ufc_image_path": ufc_image_path,
+            "pushover_message": msg, "event_url": event_url,
+        })
 
 
 def run_monitor(target: str, threshold: float):
@@ -1055,6 +1083,7 @@ def run_monitor(target: str, threshold: float):
     # Shared state for health check and heartbeat
     last_message_time = [time.time()]
     non_json_count = [0]
+    alert_dispatcher = AlertDispatcher(deliver_whale_alert, ALERT_SPOOL_DIR)
 
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
         for i in range(0, len(asset_ids), chunk_size):
@@ -1116,7 +1145,8 @@ def run_monitor(target: str, threshold: float):
             print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
 
         elif event_type == "last_trade_price":
-            process_last_trade_price(data, token_map, threshold)
+            process_last_trade_price(data, token_map, threshold,
+                                     alert_dispatcher=alert_dispatcher)
 
     def on_error(wsapp, error):
         print(f"[ERROR] WebSocket error: {error}")
@@ -1184,10 +1214,42 @@ def run_monitor(target: str, threshold: float):
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
     finally:
+        alert_dispatcher.close()
         stop_heartbeat.set()
         if health_check_thread:
             stop_health_check.set()
             health_check_thread.join(timeout=2)
+
+
+def dry_run_fixture(fixture_path: str, output_dir: str) -> dict:
+    """Replay a captured/reconstructed trade without any notification/network writes."""
+    from pathlib import Path
+
+    fixture_file = Path(fixture_path)
+    fixture = json.loads(fixture_file.read_text())
+    event, info = fixture["event"], fixture["market_info"]
+    if info.get("ufc_image_path") and not Path(info["ufc_image_path"]).is_absolute():
+        info["ufc_image_path"] = str(fixture_file.parent / info["ufc_image_path"])
+    trader, evidence = match_trader(event, info.get("condition_id"), fixture["trades"])
+    price, size = float(event["price"]), float(event["size"])
+    text = build_x_alert_tweet(
+        info["event_title"], info.get("market_display", "Moneyline"), info["outcome"],
+        price, size * price, size * (1 - price), size,
+        trader=trader, post_prefix=fixture.get("post_prefix"),
+    )
+    directory = Path(output_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    image_path = info.get("ufc_image_path")
+    # QR footer disabled for now. Uncomment these lines to restore dry-run QR output.
+    # image_path = compose_trader_image(info.get("ufc_image_path"), trader,
+    #                                   output_dir=directory / "images")
+    result = {"dry_run": True, "provenance": fixture.get("provenance", "fixture"),
+              "text": text, "weighted_length_upper_bound": weighted_length(text),
+              "image_path": image_path, "trader": trader, "matching": evidence}
+    (directory / "tweet.txt").write_text(text + "\n")
+    (directory / "evidence.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+    return result
 
 
 def main():
@@ -1201,7 +1263,17 @@ def main():
         help="Event slug (e.g., ufc-jus3-pad-2026-01-24) or 'all'"
     )
     
+    parser.add_argument("--dry-run", action="store_true", help="Replay a fixture without notifications")
+    parser.add_argument("--trade-fixture", help="JSON containing event, market_info and trades")
+    parser.add_argument("--output-dir", default="data/dry_run", help="Dry-run output directory")
     args = parser.parse_args()
+    if args.dry_run:
+        if not args.trade_fixture:
+            parser.error("--dry-run requires --trade-fixture")
+        dry_run_fixture(args.trade_fixture, args.output_dir)
+        return
+    if args.trade_fixture:
+        parser.error("--trade-fixture requires --dry-run")
 
     try:
         threshold = parse_threshold_from_env()

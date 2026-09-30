@@ -10,6 +10,7 @@ This bot uses the most efficient approach for whale detection:
 2. **Real-time Monitoring** (CLOB WebSocket) - Subscribes to `last_trade_price` events to detect executed trades
 3. **UFC Card Art** (UFC.com) - Matches each fight date to the official upcoming event page and caches its desktop hero image
 4. **Alert System** (Pushover + X) - Sends linked Pushover notifications and URL-free X posts with the matching card image
+5. **Trader Attribution** (public Data API) - Matches each X alert to a unique BUY trade, then adds the public trader name/wallet and a profile QR footer
 
 ### Why WebSocket over Polling?
 
@@ -79,6 +80,11 @@ The bot uses X's official `POST /2/media/upload` endpoint, then attaches the
 returned media ID through `POST /2/tweets`. It uploads a card image once and
 reuses that media ID until shortly before X's reported expiration time.
 
+Install the repository requirements in your deployment's virtual environment.
+The profile footer uses `qrcode[pil]==8.2` (Pillow 10.1 or newer); no global
+installation is required. If QR rendering is unavailable, the alert retains
+its trader text and original artwork.
+
 ## API References
 
 - **Gamma API (markets)**: https://docs.polymarket.com/api-reference/core/get-market
@@ -87,6 +93,11 @@ reuses that media ID until shortly before X's reported expiration time.
 - **X media upload**: https://docs.x.com/x-api/media/upload-media
 - **X create post**: https://docs.x.com/x-api/posts/create-post
 - **UFC events**: https://www.ufc.com/events
+- **Public trade data**: https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
+- **Current market stream fields**: https://docs.polymarket.com/market-data/realtime-data
+- **QR generation**: https://github.com/lincolnloop/python-qrcode
+- **X character counting**: https://docs.x.com/fundamentals/counting-characters
+- **X pricing**: https://docs.x.com/x-api/getting-started/pricing
 
 ## How It Works
 
@@ -117,9 +128,82 @@ reuses that media ID until shortly before X's reported expiration time.
 
 - Alerts rely on `last_trade_price` (executed trades). `price_change` is emitted when orders are placed or canceled, so it can create false whale alerts if used for detection. See the Market Channel docs for details: https://docs.polymarket.com/developers/CLOB/websocket/market-channel.md
 - Only BUY side triggers alerts (avoids duplicate notifications)
-- X alert format mirrors the Pushover details with a compact one-line double-rule header designed to stay clean on phone screens: `═════ 🐳 UFC SHARP ACTION ═════`
+- X alert format uses the header `🐳 UFC SHARP ACTION`, followed by wager details and a blank line before trader attribution
 - The Polymarket URL remains in Pushover but is deliberately omitted from X
-- The same cached card image is used for every fight notification from that card
+- The same cached card artwork is reused unchanged; QR footers are currently disabled
 - X posting failures are logged and do not stop Pushover alerts or the monitor loop
 - Supports both exact event slug and keyword search
 - Auto-reconnects on WebSocket disconnection
+
+## Trader matching and profile footer
+
+Qualifying trades enqueue a snapshot for four background notification workers;
+the WebSocket callback does not wait for Pushover, attribution or X posting.
+Each worker sends the unchanged Pushover notification before preparing X.
+Alerts can finish out of order when lookups take different amounts of time.
+
+The in-memory queue holds at most 128 job paths. Every unattempted job is saved
+under `data/alert_jobs/` first; overload logs a warning and workers pick up the
+saved jobs as queue space becomes available, without blocking on network I/O.
+Unclaimed `.json` jobs survive shutdown and are picked up on the next run.
+Workers atomically rename jobs to `.inflight` before delivery to prevent duplicate
+claims. Confirmed jobs are removed. Failed, unconfirmed or interrupted claimed jobs are not
+automatically retried because a POST may have succeeded: inspect any remaining
+`.inflight` files manually before deciding whether to resend. Disk-write failure
+logs the full unsaved job and an explicit manual-recovery error. The spool needs
+a writable local data directory; it is not a guarantee against disk/power failure.
+
+For eligible X alerts, a background worker waits up to 15 seconds for public `/trades`
+indexing. The query uses the market condition ID, BUY/taker trades, and a
+two-second window around the WebSocket timestamp. Matching requires the same
+condition ID, token, side, price (within 0.000001), size (within 0.0001 shares),
+and timestamp (within two seconds). If the stream supplies `transaction_hash`,
+it must match the public trade's transaction hash. Otherwise only one distinct
+matching trade is accepted. This is correlation, not proof of a person's real
+identity; split fills, ambiguous results, malformed rows, saturated query
+windows, and unavailable data fall back to the existing unattributed alert.
+
+The public label uses name, pseudonym, then wallet. URL-like names and X
+mentions are rejected. After a blank line, the tweet appends
+`Polymarket Trader: <name> | Wallet: <full-wallet>`. Descriptive labels are
+shortened as needed to reserve the numeric wager and trader/wallet line under
+X's weighted 280-character limit.
+
+QR composition is currently **commented out** in both `process_last_trade_price`
+and `dry_run_fixture`. Posts and dry runs use the original artwork. To restore
+the footer, uncomment the marked `image_path = compose_trader_image(...)`
+assignment in both functions. The helper and its dependencies remain available.
+The verification bundle's QR screenshots and live post document the earlier
+QR-enabled version, not the currently disabled behavior.
+
+When re-enabled, the entire artwork is preserved above a white footer. Black-on-white QR codes
+use medium error correction and a four-module quiet zone. Composed files under
+`data/trader_profile_images/` are cached by artwork version, wallet and name,
+so a different wallet never inherits another trader's QR. Images remain below
+5 MB; rendering errors fall back to the original image.
+
+X currently lists $0.015 for ordinary posts and $0.20 for URL-containing posts.
+When re-enabled, the profile URL appears only in image pixels, never tweet text. QR-in-image
+billing is not explicitly guaranteed by X; confirm the actual account charge
+before treating this as a billing guarantee.
+
+## Dry-run verification
+
+```bash
+python -m unittest discover -s my-sports-bot-ufc -p 'test_trader_attribution.py' -v
+python my-sports-bot-ufc/monitor_ufc_large_wagers.py --dry-run \
+  --trade-fixture /path/to/trade-fixture.json --output-dir /path/to/preview
+```
+
+A fixture contains `event` (raw `last_trade_price` fields), `market_info`
+(`condition_id`, `event_title`, `outcome`, optional `market_display` and
+`ufc_image_path`, relative to the fixture or absolute), and `trades` (public Data API rows). Optional `provenance`
+records whether the WebSocket event was captured or reconstructed; optional
+`post_prefix` labels historical test samples. All identifiers must come from
+the matching record, not illustrative screenshot examples.
+
+Dry runs emit `tweet.txt` and `evidence.json`, referencing the original image
+while QR composition is disabled. They need
+no X/Pushover credentials or threshold configuration and perform no API reads,
+notifications, uploads, or health-check writes. Production posting still uses
+the existing OAuth and media-upload path, with no automatic POST retries.

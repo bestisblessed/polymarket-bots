@@ -1,0 +1,43 @@
+{
+  "provenance": "Genuine public Data API historical UFC trade; WebSocket event reconstructed for replay (not a recorded stream event).",
+  "event": {
+    "event_type": "last_trade_price",
+    "market": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+    "asset_id": "126583814572049905494299984923105797917559904875622511210172292118685534207",
+    "price": "0.9393646416",
+    "size": "8184.2",
+    "side": "BUY",
+    "timestamp": "1790465741000",
+    "transaction_hash": "0x2c15f88b40446dc09c6e9538df4366d16b3c0bdc27c6a33ebbe252b2eb57beff"
+  },
+  "market_info": {
+    "condition_id": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+    "event_title": "UFC Fight Night - Robert Bryczek vs. Rodolfo Vieira",
+    "outcome": "Rodolfo Vieira",
+    "market_display": "Moneyline",
+    "ufc_image_path": "source-artwork.jpg"
+  },
+  "trades": [
+    {
+      "proxyWallet": "0x67ac9e1ad7d7e74ef0215d14fc8edb538e4fedf1",
+      "side": "BUY",
+      "asset": "126583814572049905494299984923105797917559904875622511210172292118685534207",
+      "conditionId": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+      "size": 8184.2,
+      "price": 0.9393646416,
+      "timestamp": 1790465741,
+      "title": "UFC Fight Night: Robert Bryczek vs. Rodolfo Vieira (Middleweight, Main Card)",
+      "slug": "ufc-rob17-rod1-2026-09-26",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ufc-logo-37bbbd28e6.png",
+      "eventSlug": "ufc-rob17-rod1-2026-09-26",
+      "outcome": "Rodolfo Vieira",
+      "outcomeIndex": 1,
+      "name": "3648393489047",
+      "pseudonym": "Sparse-Outset",
+      "bio": "",
+      "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-2859653-72a63b57-7717-41ac-bf32-1c5b8c00c882.png",
+      "profileImageOptimized": "",
+      "transactionHash": "0x2c15f88b40446dc09c6e9538df4366d16b3c0bdc27c6a33ebbe252b2eb57beff"
+    }
+  ]
+}

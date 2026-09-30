@@ -1,0 +1,5 @@
+# Per-machine replay output; portable fixtures and selected evidence are tracked.
+/sample-1/
+/sample-2/
+/fallback/
+/live-test/

@@ -1,0 +1,64 @@
+{
+  "provenance": "Genuine trade plus deliberately conflicting synthetic wallet to verify ambiguity fallback.",
+  "event": {
+    "event_type": "last_trade_price",
+    "market": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+    "asset_id": "126583814572049905494299984923105797917559904875622511210172292118685534207",
+    "price": "0.9721229418",
+    "size": "1851.61765",
+    "side": "BUY",
+    "timestamp": "1790465769000",
+    "transaction_hash": "0xac02693231fc50abac0b58f8e9984a059ee830cf2ea5a068c4814699cad80efc"
+  },
+  "market_info": {
+    "condition_id": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+    "event_title": "UFC Fight Night - Robert Bryczek vs. Rodolfo Vieira",
+    "outcome": "Rodolfo Vieira",
+    "market_display": "Moneyline",
+    "ufc_image_path": "source-artwork.jpg"
+  },
+  "trades": [
+    {
+      "proxyWallet": "0xd4225ee3c77fda4d1360e096669e4e97198a7e43",
+      "side": "BUY",
+      "asset": "126583814572049905494299984923105797917559904875622511210172292118685534207",
+      "conditionId": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+      "size": 1851.61765,
+      "price": 0.9721229418,
+      "timestamp": 1790465769,
+      "title": "UFC Fight Night: Robert Bryczek vs. Rodolfo Vieira (Middleweight, Main Card)",
+      "slug": "ufc-rob17-rod1-2026-09-26",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ufc-logo-37bbbd28e6.png",
+      "eventSlug": "ufc-rob17-rod1-2026-09-26",
+      "outcome": "Rodolfo Vieira",
+      "outcomeIndex": 1,
+      "name": "Liverpool1",
+      "pseudonym": "Defensive-Quartz",
+      "bio": "",
+      "profileImage": "",
+      "profileImageOptimized": "",
+      "transactionHash": "0xac02693231fc50abac0b58f8e9984a059ee830cf2ea5a068c4814699cad80efc"
+    },
+    {
+      "proxyWallet": "0xffffffffffffffffffffffffffffffffffffffff",
+      "side": "BUY",
+      "asset": "126583814572049905494299984923105797917559904875622511210172292118685534207",
+      "conditionId": "0x4bd062463d01eac1bb39d5785d3a2eaea8a37075a8e4a0339219d6fb0025a5ec",
+      "size": 1851.61765,
+      "price": 0.9721229418,
+      "timestamp": 1790465769,
+      "title": "UFC Fight Night: Robert Bryczek vs. Rodolfo Vieira (Middleweight, Main Card)",
+      "slug": "ufc-rob17-rod1-2026-09-26",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ufc-logo-37bbbd28e6.png",
+      "eventSlug": "ufc-rob17-rod1-2026-09-26",
+      "outcome": "Rodolfo Vieira",
+      "outcomeIndex": 1,
+      "name": "Liverpool1",
+      "pseudonym": "Defensive-Quartz",
+      "bio": "",
+      "profileImage": "",
+      "profileImageOptimized": "",
+      "transactionHash": "0xac02693231fc50abac0b58f8e9984a059ee830cf2ea5a068c4814699cad80efc"
+    }
+  ]
+}

@@ -5,4 +5,6 @@ python-dotenv
 pytz
 polymarket-apis
 websocket-client
+qrcode[pil]==8.2
+Pillow>=10.1
 py_clob_client
