@@ -41,7 +41,7 @@ from requests_oauthlib import OAuth1
 import websocket
 from trader_attribution import (
     compose_trader_image, fit_text, lookup_trader, match_trader,
-    short_wallet, weighted_length,
+    weighted_length,
 )
 
 load_dotenv()
@@ -55,7 +55,7 @@ X_POST_ENDPOINT = "https://api.x.com/2/tweets"
 X_MEDIA_UPLOAD_ENDPOINT = "https://api.x.com/2/media/upload"
 UFC_EVENTS_URL = "https://www.ufc.com/events"
 UFC_BASE_URL = "https://www.ufc.com"
-X_ALERT_HEADER = "═════ 🐳 UFC SHARP ACTION ═════"
+X_ALERT_HEADER = "🐳 UFC SHARP ACTION"
 
 # === Default Settings ===
 LOG_DIR = "logs"
@@ -136,13 +136,11 @@ def build_x_alert_tweet(
         lines = [header, "", labels[0], f"Market: {labels[1]}",
                  f"Side: {labels[2]} @ {price:.0%}", wager]
         if trader:
-            lines.append(f"Polymarket trader: {labels[3]} · Wallet: {short_wallet(trader['wallet'])}")
+            lines.extend(["", f"Polymarket Trader: {labels[3]} | Wallet: {trader['wallet']}"])
         if post_prefix:
             lines.insert(0, post_prefix)
         return "\n".join(lines)
 
-    if weighted_length(render()) > 280:
-        header = "🐳 UFC SHARP ACTION"
     # Reserve the full numeric wager and wallet; shorten descriptive fields first.
     while weighted_length(render()) > 280:
         candidates = [i for i, label in enumerate(labels) if weighted_length(label) > 4]
@@ -996,10 +994,10 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
             size,
             trader=trader,
         )
-        send_x_tweet(
-            tweet_text,
-            image_path=compose_trader_image(ufc_image_path, trader),
-        )
+        image_path = ufc_image_path
+        # QR footer disabled for now. Uncomment this line to restore it.
+        # image_path = compose_trader_image(ufc_image_path, trader)
+        send_x_tweet(tweet_text, image_path=image_path)
 
 
 def run_monitor(target: str, threshold: float):
@@ -1229,8 +1227,10 @@ def dry_run_fixture(fixture_path: str, output_dir: str) -> dict:
     )
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
-    image_path = compose_trader_image(info.get("ufc_image_path"), trader,
-                                      output_dir=directory / "images")
+    image_path = info.get("ufc_image_path")
+    # QR footer disabled for now. Uncomment these lines to restore dry-run QR output.
+    # image_path = compose_trader_image(info.get("ufc_image_path"), trader,
+    #                                   output_dir=directory / "images")
     result = {"dry_run": True, "provenance": fixture.get("provenance", "fixture"),
               "text": text, "weighted_length_upper_bound": weighted_length(text),
               "image_path": image_path, "trader": trader, "matching": evidence}

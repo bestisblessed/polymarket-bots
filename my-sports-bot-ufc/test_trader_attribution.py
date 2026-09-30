@@ -131,7 +131,9 @@ class ImageAndPostTests(unittest.TestCase):
             trader={**self.trader, "name": "非常長的用戶名稱" * 30})
         self.assertLessEqual(attribution.weighted_length(text), 280)
         self.assertIn("$5,126.34 to win $1,618.84 (6,745.18 shares)", text)
-        self.assertIn("Wallet: " + attribution.short_wallet(WALLET), text)
+        self.assertIn("Wallet: " + WALLET, text)
+        self.assertTrue(text.startswith("🐳 UFC SHARP ACTION\n\n"))
+        self.assertIn("\n\nPolymarket Trader:", text)
         self.assertNotIn("https://", text)
 
     def test_token_metadata_keeps_condition_id(self):
@@ -144,22 +146,38 @@ class ImageAndPostTests(unittest.TestCase):
         fixture.write_text(json.dumps({"event": EVENT, "market_info": {**INFO, "ufc_image_path": "art.jpg"},
                                        "trades": [TRADE], "provenance": "unit fixture"}))
         with patch.object(requests, "post", side_effect=AssertionError("External POST")), \
-                patch.object(requests, "get", side_effect=AssertionError("External GET")):
+                patch.object(requests, "get", side_effect=AssertionError("External GET")), \
+                patch.object(monitor, "compose_trader_image", side_effect=AssertionError("QR disabled")):
             result = monitor.dry_run_fixture(str(fixture), str(self.root / "preview"))
         self.assertTrue(result["dry_run"])
         self.assertEqual(result["matching"]["status"], "matched")
         self.assertTrue(Path(result["image_path"]).is_file())
+        self.assertEqual(Path(result["image_path"]), self.art)
 
-    def test_live_handler_preserves_pushover_then_posts_enriched_image(self):
+    def test_live_handler_preserves_pushover_then_posts_original_image(self):
+        info = {**INFO, "ufc_image_path": str(self.art)}
         with patch.object(monitor, "log_event"), patch.object(monitor, "send_pushover") as push, \
                 patch.object(monitor, "lookup_trader", return_value=(self.trader, {"status": "matched"})), \
-                patch.object(monitor, "compose_trader_image", return_value="composed.jpg"), \
+                patch.object(monitor, "compose_trader_image", side_effect=AssertionError("QR disabled")), \
                 patch.object(monitor, "send_x_tweet") as send:
-            monitor.process_last_trade_price(EVENT, {"12345": INFO}, 1000)
+            monitor.process_last_trade_price(EVENT, {"12345": info}, 1000)
         push.assert_called_once()
         send.assert_called_once()
-        self.assertIn("Polymarket trader: uondrey", send.call_args.args[0])
-        self.assertEqual(send.call_args.kwargs["image_path"], "composed.jpg")
+        self.assertIn("\n\nPolymarket Trader: uondrey | Wallet: " + WALLET, send.call_args.args[0])
+        self.assertEqual(send.call_args.kwargs["image_path"], str(self.art))
+
+    def test_requested_full_wallet_layout(self):
+        trader = {**self.trader, "name": "Liverpool1",
+                  "wallet": "0xd4225ee3c77fda4d1360e096669e4e97198a7e43"}
+        text = monitor.build_x_alert_tweet(
+            "UFC Fight Night - Robert Bryczek vs. Rodolfo Vieira", "Moneyline",
+            "Rodolfo Vieira", .97, 1800, 51.62, 1851.62, trader=trader)
+        self.assertEqual(text, "🐳 UFC SHARP ACTION\n\n"
+            "UFC Fight Night - Robert Bryczek vs. Rodolfo Vieira\n"
+            "Market: Moneyline\nSide: Rodolfo Vieira @ 97%\n"
+            "Wager: $1,800.00 to win $51.62 (1,851.62 shares)\n\n"
+            "Polymarket Trader: Liverpool1 | Wallet: " + trader["wallet"])
+        self.assertLessEqual(attribution.weighted_length(text), 280)
 
     def test_sender_never_retries_uncertain_post(self):
         with patch.object(monitor, "get_x_auth", return_value=Mock()), \
