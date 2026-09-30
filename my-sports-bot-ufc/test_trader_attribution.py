@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -156,11 +157,17 @@ class ImageAndPostTests(unittest.TestCase):
 
     def test_live_handler_preserves_pushover_then_posts_original_image(self):
         info = {**INFO, "ufc_image_path": str(self.art)}
+        dispatcher = Mock()
         with patch.object(monitor, "log_event"), patch.object(monitor, "send_pushover") as push, \
                 patch.object(monitor, "lookup_trader", return_value=(self.trader, {"status": "matched"})), \
                 patch.object(monitor, "compose_trader_image", side_effect=AssertionError("QR disabled")), \
                 patch.object(monitor, "send_x_tweet") as send:
-            monitor.process_last_trade_price(EVENT, {"12345": info}, 1000)
+            monitor.process_last_trade_price(EVENT, {"12345": info}, 1000,
+                                             alert_dispatcher=dispatcher)
+            push.assert_not_called()
+            send.assert_not_called()
+            dispatcher.submit.assert_called_once()
+            monitor.deliver_whale_alert(dispatcher.submit.call_args.args[0])
         push.assert_called_once()
         send.assert_called_once()
         self.assertIn("\n\nPolymarket Trader: uondrey | Wallet: " + WALLET, send.call_args.args[0])
@@ -184,6 +191,213 @@ class ImageAndPostTests(unittest.TestCase):
                 patch.object(monitor.requests, "post", side_effect=requests.Timeout) as post:
             self.assertIsNone(monitor.send_x_tweet("test"))
         self.assertEqual(post.call_count, 1)
+
+
+class BackgroundAlertTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+
+    def dispatcher(self, handler, **kwargs):
+        dispatcher = monitor.AlertDispatcher(handler, self.root, **kwargs)
+        self.addCleanup(dispatcher.close)
+        return dispatcher
+
+    def test_slow_lookup_does_not_block_next_trade_or_fast_worker(self):
+        blocked, release, fast_posted, slow_posted = [threading.Event() for _ in range(4)]
+        self.addCleanup(release.set)
+        dispatcher = self.dispatcher(monitor.deliver_whale_alert, workers=2, capacity=2)
+
+        def lookup(event, condition):
+            if event["timestamp"] == EVENT["timestamp"]:
+                blocked.set()
+                release.wait(3)
+            return None, {"status": "timeout"}
+
+        def posted(text, **kwargs):
+            (fast_posted if "$760.00" in text else slow_posted).set()
+            return "test-post-id"
+
+        with patch.object(monitor, "log_event") as log, \
+                patch.object(monitor, "send_pushover"), \
+                patch.object(monitor, "lookup_trader", side_effect=lookup), \
+                patch.object(monitor, "send_x_tweet", side_effect=posted) as post:
+            start = time.monotonic()
+            monitor.process_last_trade_price(EVENT, {"12345": INFO}, 500,
+                                             alert_dispatcher=dispatcher)
+            self.assertLess(time.monotonic() - start, 0.2)
+            self.assertTrue(blocked.wait(1))
+            small = {**EVENT, "size": "1"}
+            monitor.process_last_trade_price(small, {"12345": INFO}, 500,
+                                             alert_dispatcher=dispatcher)
+            fast = {**EVENT, "size": "1000", "timestamp": "1786702801123"}
+            monitor.process_last_trade_price(fast, {"12345": INFO}, 500,
+                                             alert_dispatcher=dispatcher)
+            self.assertEqual(log.call_count, 3)
+            self.assertTrue(fast_posted.wait(1), "second worker must not wait for slow lookup")
+            self.assertFalse(slow_posted.is_set())
+            release.set()
+            self.assertTrue(slow_posted.wait(1))
+            dispatcher.close()
+            self.assertEqual(post.call_count, 2)
+            self.assertTrue(all("Polymarket Trader:" not in call.args[0]
+                                for call in post.call_args_list))
+
+    def test_burst_overflow_is_saved_and_delivered_once(self):
+        entered, release, finished = [threading.Event() for _ in range(3)]
+        seen = []
+        lock = threading.Lock()
+
+        def deliver(job):
+            entered.set()
+            release.wait(3)
+            with lock:
+                seen.append(job["id"])
+                if len(seen) == 6:
+                    finished.set()
+
+        dispatcher = self.dispatcher(deliver, workers=2, capacity=1)
+        self.addCleanup(release.set)
+        with patch("builtins.print") as output:
+            start = time.monotonic()
+            for i in range(6):
+                self.assertTrue(dispatcher.submit({"id": i}))
+            self.assertLess(time.monotonic() - start, 0.2)
+            self.assertTrue(entered.wait(1))
+            self.assertTrue(any("queue full" in str(call) for call in output.call_args_list))
+            self.assertGreater(len(list(self.root.glob("*.json"))), 0)
+            release.set()
+            self.assertTrue(finished.wait(2))
+        dispatcher.close()
+        self.assertCountEqual(seen, range(6))
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_actual_websocket_callback_returns_during_slow_lookup(self):
+        blocked, release, posted = [threading.Event() for _ in range(3)]
+        callback_times = []
+        info = {**INFO, "market_title": "Moneyline"}
+        state = {"token_map": {"12345": info}, "token_ids": ["12345"],
+                 "event_slug": "ufc-test", "event_title": "Test", "event_url": "", "markets": []}
+
+        def lookup(*args):
+            blocked.set()
+            release.wait(3)
+            return None, {"status": "timeout"}
+
+        def post(*args, **kwargs):
+            posted.set()
+            return "test-id"
+
+        class FakeWebSocket:
+            def __init__(self, url, **callbacks):
+                self.on_message = callbacks["on_message"]
+
+            def run_forever(self, **kwargs):
+                try:
+                    for event in [EVENT, {**EVENT, "size": "1"}]:
+                        start = time.monotonic()
+                        self.on_message(self, json.dumps({**event, "event_type": "last_trade_price"}))
+                        callback_times.append(time.monotonic() - start)
+                    if not blocked.wait(1):
+                        raise AssertionError("worker did not start lookup")
+                    if posted.is_set():
+                        raise AssertionError("lookup gate should still block only the worker")
+                finally:
+                    release.set()
+                    posted.wait(1)
+                raise KeyboardInterrupt
+
+        with patch.object(monitor, "fetch_event_markets", return_value=state), \
+                patch.object(monitor, "prepare_ufc_event_images"), \
+                patch.object(monitor, "ALERT_SPOOL_DIR", str(self.root)), \
+                patch.object(monitor, "HEALTHCHECK_URL", ""), \
+                patch.object(monitor, "heartbeat_worker"), \
+                patch.object(monitor, "log_event") as log, \
+                patch.object(monitor, "send_pushover"), \
+                patch.object(monitor, "lookup_trader", side_effect=lookup), \
+                patch.object(monitor, "send_x_tweet", side_effect=post) as send, \
+                patch.object(monitor.websocket, "WebSocketApp", FakeWebSocket):
+            monitor.run_monitor("ufc-test", 1000)
+        self.assertEqual(log.call_count, 2)
+        self.assertEqual(send.call_count, 1)
+        self.assertTrue(all(elapsed < 0.2 for elapsed in callback_times))
+        print("[VERIFY] Real on_message callback times:", [round(t, 4) for t in callback_times])
+
+    def test_pending_restart_recovery_but_no_retry_of_claimed_job(self):
+        (self.root / "pending.json").write_text(json.dumps({"id": 1}))
+        (self.root / "uncertain.inflight").write_text(json.dumps({"id": 2}))
+        complete = threading.Event()
+        seen = []
+        def deliver(job):
+            seen.append(job["id"])
+            complete.set()
+        dispatcher = self.dispatcher(deliver, workers=2)
+        self.assertTrue(complete.wait(1))
+        dispatcher.close()
+        self.assertEqual(seen, [1])
+        self.assertTrue((self.root / "uncertain.inflight").exists())
+
+    def test_failed_worker_keeps_evidence_without_retry_and_continues(self):
+        calls = []
+        completed = threading.Event()
+        def deliver(job):
+            calls.append(job["id"])
+            if job["id"] == 1:
+                raise requests.Timeout("uncertain POST")
+            completed.set()
+        dispatcher = self.dispatcher(deliver, workers=1)
+        dispatcher.submit({"id": 1})
+        dispatcher.submit({"id": 2})
+        self.assertTrue(completed.wait(2))
+        dispatcher.close()
+        self.assertEqual(calls, [1, 2])
+        self.assertEqual(len(list(self.root.glob("*.inflight"))), 1)
+
+    def test_disk_failure_is_explicit_not_a_callback_network_fallback(self):
+        dispatcher = self.dispatcher(Mock(), workers=1)
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")), \
+                patch("builtins.print") as output:
+            self.assertFalse(dispatcher.submit({"id": 1}))
+        self.assertIn("manual recovery required", str(output.call_args))
+        dispatcher.handler.assert_not_called()
+
+    def test_unconfirmed_result_is_kept_without_retry(self):
+        complete = threading.Event()
+        def deliver(job):
+            complete.set()
+            return False
+        handler = Mock(side_effect=deliver)
+        dispatcher = self.dispatcher(handler, workers=1)
+        dispatcher.submit({"id": 1})
+        self.assertTrue(complete.wait(1))
+        dispatcher.close()
+        handler.assert_called_once()
+        self.assertEqual(len(list(self.root.glob("*.inflight"))), 1)
+
+    def test_full_price_alert_keeps_pushover_but_skips_lookup_and_x(self):
+        dispatcher = Mock()
+        with patch.object(monitor, "log_event"), patch.object(monitor, "send_pushover") as push, \
+                patch.object(monitor, "lookup_trader") as lookup, \
+                patch.object(monitor, "send_x_tweet") as post:
+            monitor.process_last_trade_price({**EVENT, "price": "0.999"},
+                {"12345": INFO}, 1000, alert_dispatcher=dispatcher)
+            self.assertTrue(monitor.deliver_whale_alert(dispatcher.submit.call_args.args[0]))
+        push.assert_called_once()
+        lookup.assert_not_called()
+        post.assert_not_called()
+
+    def test_snapshot_does_not_follow_changed_token_metadata(self):
+        dispatcher = Mock()
+        info, event = INFO.copy(), EVENT.copy()
+        with patch.object(monitor, "log_event"):
+            monitor.process_last_trade_price(event, {"12345": info}, 1000,
+                                             alert_dispatcher=dispatcher)
+        event["price"] = "0.01"
+        info["event_title"] = "changed"
+        job = dispatcher.submit.call_args.args[0]
+        self.assertEqual(job["data"]["price"], "0.76")
+        self.assertEqual(job["event_title"], INFO["event_title"])
 
 
 if __name__ == "__main__":

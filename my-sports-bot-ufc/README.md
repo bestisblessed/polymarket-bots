@@ -137,7 +137,23 @@ its trader text and original artwork.
 
 ## Trader matching and profile footer
 
-For eligible X alerts, the bot waits up to 15 seconds for public `/trades`
+Qualifying trades enqueue a snapshot for four background notification workers;
+the WebSocket callback does not wait for Pushover, attribution or X posting.
+Each worker sends the unchanged Pushover notification before preparing X.
+Alerts can finish out of order when lookups take different amounts of time.
+
+The in-memory queue holds at most 128 job paths. Every unattempted job is saved
+under `data/alert_jobs/` first; overload logs a warning and workers pick up the
+saved jobs as queue space becomes available, without blocking on network I/O.
+Unclaimed `.json` jobs survive shutdown and are picked up on the next run.
+Workers atomically rename jobs to `.inflight` before delivery to prevent duplicate
+claims. Confirmed jobs are removed. Failed, unconfirmed or interrupted claimed jobs are not
+automatically retried because a POST may have succeeded: inspect any remaining
+`.inflight` files manually before deciding whether to resend. Disk-write failure
+logs the full unsaved job and an explicit manual-recovery error. The spool needs
+a writable local data directory; it is not a guarantee against disk/power failure.
+
+For eligible X alerts, a background worker waits up to 15 seconds for public `/trades`
 indexing. The query uses the market condition ID, BUY/taker trades, and a
 two-second window around the WebSocket timestamp. Matching requires the same
 condition ID, token, side, price (within 0.000001), size (within 0.0001 shares),

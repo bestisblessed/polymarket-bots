@@ -39,6 +39,7 @@ import requests
 from dotenv import load_dotenv
 from requests_oauthlib import OAuth1
 import websocket
+from alert_dispatcher import AlertDispatcher
 from trader_attribution import (
     compose_trader_image, fit_text, lookup_trader, match_trader,
     weighted_length,
@@ -60,6 +61,7 @@ X_ALERT_HEADER = "🐳 UFC SHARP ACTION"
 # === Default Settings ===
 LOG_DIR = "logs"
 UFC_IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ufc_event_images")
+ALERT_SPOOL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "alert_jobs")
 MAX_X_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_X_IMAGE_TYPES = {
     "image/bmp": ".bmp",
@@ -907,7 +909,26 @@ def fetch_ufc_fight_events(*, limit: int = 200) -> list:
     return fights
 
 
-def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> None:
+def deliver_whale_alert(job: dict) -> bool:
+    """Run notification I/O outside the WebSocket receive callback."""
+    send_pushover(job["pushover_message"], job["event_url"])
+    if job["price"] >= 0.995:
+        print("[INFO] X tweet skipped: bet price is already 100%")
+        return True
+    trader, evidence = lookup_trader(job["data"], job["condition_id"])
+    print(f"[INFO] Trader attribution: {json.dumps(evidence, sort_keys=True)}")
+    tweet_text = build_x_alert_tweet(
+        job["event_title"], job["market_display"], job["outcome"], job["price"],
+        job["usd_value"], job["potential_profit"], job["size"], trader=trader,
+    )
+    image_path = job["ufc_image_path"]
+    # QR footer disabled for now. Uncomment this line to restore it.
+    # image_path = compose_trader_image(image_path, trader)
+    return bool(send_x_tweet(tweet_text, image_path=image_path))
+
+
+def process_last_trade_price(data: dict, token_map: dict, threshold: float, *,
+                             alert_dispatcher: AlertDispatcher) -> None:
     """
     Process a last_trade_price event and alert on large executed trades.
 
@@ -978,26 +999,14 @@ def process_last_trade_price(data: dict, token_map: dict, threshold: float) -> N
         print(f"Potential Profit: {format_usd(potential_profit)}")
         print(f"{'='*60}\n")
 
-        send_pushover(msg, event_url)
-        if price >= 0.995:
-            print("[INFO] X tweet skipped: bet price is already 100%")
-            return
-        trader, evidence = lookup_trader(data, market_info.get("condition_id"))
-        print(f"[INFO] Trader attribution: {json.dumps(evidence, sort_keys=True)}")
-        tweet_text = build_x_alert_tweet(
-            event_title,
-            market_display,
-            outcome,
-            price,
-            usd_value,
-            potential_profit,
-            size,
-            trader=trader,
-        )
-        image_path = ufc_image_path
-        # QR footer disabled for now. Uncomment this line to restore it.
-        # image_path = compose_trader_image(ufc_image_path, trader)
-        send_x_tweet(tweet_text, image_path=image_path)
+        alert_dispatcher.submit({
+            "data": dict(data), "condition_id": market_info.get("condition_id"),
+            "event_title": event_title, "market_display": market_display,
+            "outcome": outcome, "price": price, "size": size,
+            "usd_value": usd_value, "potential_profit": potential_profit,
+            "ufc_image_path": ufc_image_path,
+            "pushover_message": msg, "event_url": event_url,
+        })
 
 
 def run_monitor(target: str, threshold: float):
@@ -1074,6 +1083,7 @@ def run_monitor(target: str, threshold: float):
     # Shared state for health check and heartbeat
     last_message_time = [time.time()]
     non_json_count = [0]
+    alert_dispatcher = AlertDispatcher(deliver_whale_alert, ALERT_SPOOL_DIR)
 
     def _subscribe_assets(ws_conn, asset_ids, *, chunk_size: int = 500) -> None:
         for i in range(0, len(asset_ids), chunk_size):
@@ -1135,7 +1145,8 @@ def run_monitor(target: str, threshold: float):
             print(f"[INFO] Book update: {asset_id}... last_price={last_price}")
 
         elif event_type == "last_trade_price":
-            process_last_trade_price(data, token_map, threshold)
+            process_last_trade_price(data, token_map, threshold,
+                                     alert_dispatcher=alert_dispatcher)
 
     def on_error(wsapp, error):
         print(f"[ERROR] WebSocket error: {error}")
@@ -1203,6 +1214,7 @@ def run_monitor(target: str, threshold: float):
     except KeyboardInterrupt:
         print("\n[INFO] Shutting down gracefully...")
     finally:
+        alert_dispatcher.close()
         stop_heartbeat.set()
         if health_check_thread:
             stop_health_check.set()

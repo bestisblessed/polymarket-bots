@@ -1,5 +1,42 @@
 # UFC trader attribution verification — 2026-09-30
 
+## Latest repair: nonblocking alert workers, QR disabled
+
+The current version uses the full-wallet text layout in `text-only-sample.txt`.
+QR calls remain commented out. The QR evidence below is historical.
+
+All **27 focused tests pass** (1.123 seconds in the verified run), including the
+actual `run_monitor` / `on_message` callback with a mocked WebSocket transport.
+While a background attribution lookup was deliberately stalled, the qualifying
+trade and following small-trade callbacks returned in **0.0009 and 0.0002
+seconds**. These are controlled local timings, not production latency guarantees.
+A second worker completed a fast alert before the first lookup was released.
+
+An overload test used two workers and only one in-memory queue slot: all six
+jobs were saved, submission returned without waiting for delivery, the queue-full
+warning was emitted, and all six jobs were delivered exactly once. Other tests
+verify pending-job recovery, immutable metadata snapshots, explicit disk-failure
+reporting, unconfirmed delivery evidence without retry, worker exception survival,
+and the unchanged Pushover-before-X order / full-price X skip behavior.
+The existing 15-second lookup limit, ambiguity rules, Unicode limit and uncertain
+POST no-retry tests remain passing. All external notifications/transport were
+mocked; no new live tweet, Pushover message or health-check write was sent.
+
+Four workers handle notification I/O. The bounded memory queue holds 128 paths;
+local pending `.json` jobs survive queue overload and normal restart. Claimed
+`.inflight` jobs are never automatically replayed, since an interrupted or
+unconfirmed external POST might already have succeeded. Manual inspection is
+required before resending those jobs. This spool requires writable local storage
+and does not guarantee recovery from disk/power failure.
+
+The historical public-trade CLI fixture was re-run successfully: full wallet,
+250/280 weighted characters, original artwork, no QR composition.
+
+References used for the repair:
+[Python Queue](https://docs.python.org/3/library/queue.html),
+[threading](https://docs.python.org/3/library/threading.html),
+[atomic replacement](https://docs.python.org/3/library/os.html#os.replace).
+
 ## Result
 
 17 focused regression tests pass. Two attributed samples for different wallets
